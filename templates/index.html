@@ -25,10 +25,25 @@
 
     <!-- Paso 2: .xlsx -->
     <h2>2. Archivo Excel (.xlsx) <small style="color:#888; font-weight:normal;">(opcional, sino usa el predeterminado)</small></h2>
-    <div class="drop-zone" id="xlsx-drop-zone">
-      <p>Arrastra un archivo .xlsx aquí o haz clic para seleccionar</p>
+    <div class="form-group">
+      <label for="xlsx_path_input">Ruta del archivo .xlsx:</label>
+      <input type="text" name="xlsx_path_input" id="xlsx_path_input"
+             placeholder="Ej: /home/usuario/docs/cotizaciones.xlsx">
     </div>
-    <input type="file" name="xlsx_file" id="xlsx_file" accept=".xlsx" style="display:none">
+
+    {% if rutas %}
+    <div class="rutas-guardadas">
+      <span class="rutas-label">Recientes:</span>
+      <div class="rutas-chips" id="rutas-chips">
+        {% for ruta in rutas %}
+        <span class="ruta-chip" data-ruta="{{ ruta }}">
+          <span class="ruta-nombre" title="{{ ruta }}">{{ ruta.split('/')[-1] }}</span>
+          <button type="button" class="ruta-del" data-ruta="{{ ruta }}" title="Eliminar de recientes">×</button>
+        </span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
 
     <div class="actions">
       <button type="submit" class="btn">Extraer datos</button>
@@ -64,32 +79,26 @@
       }
     });
 
-    // Drag & drop para .xlsx
-    const xlsxDropZone = document.getElementById('xlsx-drop-zone');
-    const xlsxFileInput = document.getElementById('xlsx_file');
+    // Rutas guardadas: clic para llenar el input, × para eliminar
+    const xlsxInput = document.getElementById('xlsx_path_input');
 
-    xlsxDropZone.addEventListener('click', () => xlsxFileInput.click());
+    document.querySelectorAll('.ruta-nombre').forEach(el => {
+      el.addEventListener('click', () => {
+        xlsxInput.value = el.closest('.ruta-chip').dataset.ruta;
+      });
+    });
 
-    xlsxDropZone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      xlsxDropZone.classList.add('dragover');
-    });
-    xlsxDropZone.addEventListener('dragleave', () => {
-      xlsxDropZone.classList.remove('dragover');
-    });
-    xlsxDropZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      xlsxDropZone.classList.remove('dragover');
-      const files = e.dataTransfer.files;
-      if (files.length && files[0].name.endsWith('.xlsx')) {
-        xlsxFileInput.files = files;
-        xlsxDropZone.querySelector('p').textContent = files[0].name;
-      }
-    });
-    xlsxFileInput.addEventListener('change', () => {
-      if (xlsxFileInput.files.length) {
-        xlsxDropZone.querySelector('p').textContent = xlsxFileInput.files[0].name;
-      }
+    document.querySelectorAll('.ruta-del').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const ruta = btn.dataset.ruta;
+        const fd = new FormData();
+        fd.append('ruta', ruta);
+        await fetch('/rutas/eliminar', { method: 'POST', body: fd });
+        btn.closest('.ruta-chip').remove();
+        if (!document.querySelectorAll('.ruta-chip').length) {
+          document.querySelector('.rutas-guardadas').remove();
+        }
+      });
     });
   </script>
 {% endblock %}

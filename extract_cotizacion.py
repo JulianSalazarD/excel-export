@@ -23,6 +23,32 @@ from docx.table import Table
 
 from models import DatosCotizacion
 
+# Mapeo de meses en español a número
+MESES_ES = {
+    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4,
+    "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,
+    "septiembre": 9, "setiembre": 9, "octubre": 10,
+    "noviembre": 11, "diciembre": 12,
+}
+
+RE_FECHA_NUM = re.compile(r"(\d{1,2})\s+de\s+(\w+)\s+del?\s+(\d{4})", re.IGNORECASE)
+
+
+def fecha_a_ddmmyyyy(texto: str | None) -> str | None:
+    """Convierte '4 de abril del 2026' a '04/04/2026'."""
+    if not texto:
+        return None
+    m = RE_FECHA_NUM.search(texto)
+    if not m:
+        return texto
+    dia = int(m.group(1))
+    mes_nombre = m.group(2).lower()
+    anio = int(m.group(3))
+    mes = MESES_ES.get(mes_nombre)
+    if mes is None:
+        return texto
+    return f"{dia:02d}/{mes:02d}/{anio}"
+
 
 
 # Regex patterns
@@ -122,11 +148,11 @@ class CotizacionExtractor:
         return None
 
     def _extract_fecha(self, paragraphs: list[str]) -> Optional[str]:
-        """Extrae la fecha escrita como 'Medellín, 4 de abril del 2026'."""
+        """Extrae la fecha y la convierte a DD/MM/YYYY."""
         for text in paragraphs:
             m = RE_FECHA.search(text)
             if m:
-                return m.group(0).strip()
+                return fecha_a_ddmmyyyy(m.group(0).strip())
         return None
 
     def _extract_valor_total(self, tables: list[Table]) -> Optional[str]:

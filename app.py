@@ -11,10 +11,12 @@ Ejecutar:
   uvicorn app:app --reload
 """
 
+import json
+import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from jinja2 import Environment, FileSystemLoader
 
 from extract_cotizacion import CotizacionExtractor
@@ -26,13 +28,43 @@ from models import DatosCotizacion
 # ---------------------------------------------------------------------------
 
 BASE_DIR = Path(__file__).parent
-UPLOADS_DIR = BASE_DIR / "uploads"
-UPLOADS_DIR.mkdir(exist_ok=True)
+RUTAS_FILE = BASE_DIR / ".rutas_xlsx.json"
 
 app = FastAPI(title="Melectra Cotizaciones")
 
 # Jinja2 directo (evita bug con Jinja2Templates en Python 3.14)
 _jinja_env = Environment(loader=FileSystemLoader(str(BASE_DIR / "templates")))
+
+
+# ---------------------------------------------------------------------------
+# Gestión de rutas guardadas
+# ---------------------------------------------------------------------------
+
+def _load_rutas() -> list[str]:
+    """Carga las rutas .xlsx guardadas desde JSON."""
+    if RUTAS_FILE.exists():
+        try:
+            return json.loads(RUTAS_FILE.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+    return [str(XLSX_PATH)]
+
+
+def _save_ruta(ruta: str) -> None:
+    """Guarda una ruta .xlsx al historial (sin duplicados, máx 10)."""
+    rutas = _load_rutas()
+    if ruta in rutas:
+        rutas.remove(ruta)
+    rutas.insert(0, ruta)
+    rutas = rutas[:10]
+    RUTAS_FILE.write_text(json.dumps(rutas, indent=2))
+
+
+def _delete_ruta(ruta: str) -> None:
+    """Elimina una ruta del historial."""
+    rutas = _load_rutas()
+    rutas = [r for r in rutas if r != ruta]
+    RUTAS_FILE.write_text(json.dumps(rutas, indent=2))
 
 
 def _render(template_name: str, context: dict) -> HTMLResponse:
@@ -50,45 +82,59 @@ extractor = CotizacionExtractor()
 # ---------------------------------------------------------------------------
 
 
+@app.post("/rutas/eliminar")
+async def eliminar_ruta(ruta: str = Form(...)):
+    """Elimina una ruta del historial JSON y devuelve la lista actualizada."""
+    _delete_ruta(ruta)
+    return JSONResponse({"ok": True, "rutas": _load_rutas()})
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """Página principal: subir .docx y seleccionar .xlsx."""
-    return _render("index.html", {"request": request})
+    rutas = _load_rutas()
+    return _render("index.html", {"request": request, "rutas": rutas})
 
 
 @app.post("/extraer", response_class=HTMLResponse)
 async def extraer(
     request: Request,
     docx_file: UploadFile = File(...),
-    xlsx_file: UploadFile = File(None),
+    xlsx_path_input: str = Form(""),
 ):
     """Recibe el .docx, extrae datos y muestra preview editable."""
 
-    # Guardar .docx temporalmente
-    docx_path = UPLOADS_DIR / "cotizacion.docx"
-    docx_path.write_bytes(await docx_file.read())
+    # Guardar .docx en archivo temporal (necesario para python-docx)
+    tmp = tempfile.NamedTemporaryFile(suffix=".docx", delete=False)
+    tmp.write(await docx_file.read())
+    tmp.close()
+    docx_path = Path(tmp.name)
 
-    # Resolver .xlsx
-    if xlsx_file and xlsx_file.filename:
-        xlsx_path = UPLOADS_DIR / "destino.xlsx"
-        xlsx_path.write_bytes(await xlsx_file.read())
+    # Resolver .xlsx: si el usuario escribió una ruta, usarla; sino el default
+    if xlsx_path_input.strip():
+        xlsx_path = Path(xlsx_path_input.strip())
     else:
         xlsx_path = XLSX_PATH
 
     # Verificar que el xlsx existe
     if not xlsx_path.exists():
+        docx_path.unlink(missing_ok=True)
         return _render(
             "index.html",
             {
                 "request": request,
-                "error": f"Archivo Excel no encontrado: {xlsx_path.name}",
+                "rutas": _load_rutas(),
+                "error": f"Archivo Excel no encontrado: {xlsx_path}",
             },
         )
+
+    _save_ruta(str(xlsx_path))
 
     # Extraer datos del .docx
     try:
         datos = extractor.extract(docx_path)
     except Exception as e:
+        docx_path.unlink(missing_ok=True)
         return _render(
             "index.html",
             {"request": request, "error": f"Error al procesar .docx: {e}"},
@@ -100,7 +146,7 @@ async def extraer(
             "request": request,
             "datos": datos,
             "docx_name": docx_file.filename,
-            "docx_path": str(docx_path),
+            "docx_tmp": str(docx_path),
             "xlsx_path": str(xlsx_path),
         },
     )
@@ -109,7 +155,7 @@ async def extraer(
 @app.post("/insertar", response_class=HTMLResponse)
 async def insertar(
     request: Request,
-    docx_path: str = Form(...),
+    docx_tmp: str = Form(...),
     xlsx_path: str = Form(...),
     numero: str = Form(""),
     nombre: str = Form(""),
@@ -136,6 +182,9 @@ async def insertar(
 
     xlsx = Path(xlsx_path)
 
+    # Limpiar archivo temporal del docx
+    Path(docx_tmp).unlink(missing_ok=True)
+
     if not xlsx.exists():
         return _render(
             "result.html",
@@ -143,13 +192,13 @@ async def insertar(
                 "request": request,
                 "success": False,
                 "duplicate": False,
-                "error_msg": f"Archivo Excel no encontrado: {xlsx.name}",
+                "error_msg": f"Archivo Excel no encontrado: {xlsx}",
                 "numero": datos.numero,
                 "xlsx_name": xlsx.name,
             },
         )
 
-    # Intentar insertar
+    # Intentar insertar directamente en el archivo del usuario
     try:
         inserted = insert_cotizacion(datos, xlsx_path=xlsx)
     except Exception as e:
@@ -164,6 +213,9 @@ async def insertar(
                 "xlsx_name": xlsx.name,
             },
         )
+
+    if inserted:
+        _save_ruta(str(xlsx))
 
     return _render(
         "result.html",
