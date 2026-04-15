@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Gestionar Excel{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
+  <a href="/" class="btn btn-secondary" style="padding:.4rem .9rem;font-size:.85rem;">← Inicio</a>
+  <h1 style="margin:0;">Gestionar Excel</h1>
+</div>
+
+{% if success_msg %}
+  <div class="success-box">{{ success_msg }}</div>
+{% endif %}
+{% if error %}
+  <div class="error">{{ error }}</div>
+{% endif %}
+
+<!-- Selector de archivo -->
+<form method="get" action="/excel" style="margin-bottom:1.5rem;">
+  <div style="display:flex;gap:.5rem;align-items:flex-end;">
+    <div style="flex:1">
+      <label for="xlsx-sel">Archivo Excel (.xlsx)</label>
+      <input type="text" id="xlsx-sel" name="xlsx" value="{{ xlsx_path }}"
+             placeholder="/ruta/al/archivo.xlsx" style="margin-bottom:0">
+    </div>
+    <button type="submit" class="btn" style="white-space:nowrap;">Cargar</button>
+  </div>
+
+  {% if rutas %}
+  <div class="rutas-guardadas" style="margin-top:.5rem;">
+    <span class="rutas-label">Recientes:</span>
+    <div class="rutas-chips">
+      {% for ruta in rutas %}
+      <span class="ruta-chip">
+        <span class="ruta-nombre" data-ruta="{{ ruta }}" title="{{ ruta }}">{{ ruta.split('/')[-1] }}</span>
+      </span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</form>
+
+{% if filas is defined and filas %}
+<!-- Tabla editable -->
+<form method="post" action="/excel/guardar" id="excel-form">
+  <input type="hidden" name="xlsx_path" value="{{ xlsx_path }}">
+  <textarea name="filas_json" id="filas-json" style="display:none"></textarea>
+
+  <div style="overflow-x:auto;margin-bottom:1rem;">
+    <table class="excel-table">
+      <thead>
+        <tr>
+          <th>Medio</th>
+          <th>N° Cotización</th>
+          <th>Empresa</th>
+          <th>Encargado</th>
+          <th style="min-width:280px">Servicio</th>
+          <th>Correo</th>
+          <th>Teléfono</th>
+          <th>Valor</th>
+          <th>Estado</th>
+          <th>Trabajo realizado en</th>
+          <th>Orden servicio</th>
+          <th>Fecha</th>
+          <th>Observación</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="excel-tbody">
+        {% for fila in filas %}
+        <tr data-idx="{{ loop.index0 }}">
+          <td>
+            <select data-field="medio" class="ec-sel">
+              <option value=""></option>
+              {% for m in medios %}
+              <option value="{{ m }}" {% if fila.medio and fila.medio.strip() == m %}selected{% endif %}>{{ m }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td><input data-field="numero" class="ec-in" value="{{ fila.numero or '' }}"></td>
+          <td><input data-field="empresa" class="ec-in" value="{{ fila.empresa or '' }}"></td>
+          <td><input data-field="nombre" class="ec-in" value="{{ fila.nombre or '' }}"></td>
+          <td><textarea data-field="servicio" class="ec-ta" rows="2">{{ fila.servicio or '' }}</textarea></td>
+          <td><input data-field="correo" class="ec-in" value="{{ fila.correo or '' }}"></td>
+          <td><input data-field="telefono" class="ec-in ec-sm" value="{{ fila.telefono or '' }}"></td>
+          <td><input data-field="valor_total" class="ec-in ec-sm" value="{{ fila.valor_total or '' }}"></td>
+          <td>
+            <select data-field="estado" class="ec-sel">
+              <option value=""></option>
+              {% for e in estados %}
+              <option value="{{ e }}" {% if fila.estado and fila.estado.strip() == e %}selected{% endif %}>{{ e }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td><input data-field="trabajo_realizado_en" class="ec-in" value="{{ fila.trabajo_realizado_en or '' }}"></td>
+          <td><input data-field="orden_servicio" class="ec-in ec-sm" value="{{ fila.orden_servicio or '' }}"></td>
+          <td><input data-field="fecha" class="ec-in ec-sm" value="{{ fila.fecha or '' }}"></td>
+          <td><textarea data-field="observacion" class="ec-ta" rows="2">{{ fila.observacion or '' }}</textarea></td>
+          <td>
+            <button type="button" class="btn-del-row" title="Eliminar fila">×</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+    <button type="button" id="btn-add-row" class="btn btn-secondary">+ Fila</button>
+    <button type="submit" class="btn btn-success">Guardar en Excel</button>
+    <span style="font-size:.8rem;color:#888;">Se crea copia de seguridad automáticamente.</span>
+  </div>
+</form>
+
+{% elif xlsx_path %}
+  <p style="color:#888;">No se encontraron filas de datos en el archivo.</p>
+{% endif %}
+
+<style>
+  .excel-table { border-collapse: collapse; font-size: .82rem; white-space: nowrap; }
+  .excel-table th {
+    background: #f0f4fa; border: 1px solid #d0d7e3; padding: .35rem .5rem;
+    font-weight: 600; color: #444; text-align: left;
+  }
+  .excel-table td { border: 1px solid #e0e4ec; padding: .25rem .35rem; vertical-align: top; }
+  .excel-table tr:hover td { background: #f8faff; }
+  .ec-in, .ec-sel {
+    width: 100%; min-width: 110px; padding: .25rem .3rem;
+    border: 1px solid #d0d7e3; border-radius: 3px; font-size: .82rem;
+    background: #fff; box-sizing: border-box;
+  }
+  .ec-in:focus, .ec-sel:focus { outline: none; border-color: #4a90d9; background: #f0f6ff; }
+  .ec-sm { min-width: 80px; }
+  .ec-ta {
+    width: 100%; min-width: 200px; padding: .25rem .3rem;
+    border: 1px solid #d0d7e3; border-radius: 3px; font-size: .82rem;
+    font-family: inherit; resize: vertical; box-sizing: border-box;
+  }
+  .ec-ta:focus { outline: none; border-color: #4a90d9; background: #f0f6ff; }
+  .btn-del-row {
+    background: none; border: 1px solid #e0a0a0; color: #c0392b;
+    border-radius: 3px; padding: .1rem .45rem; cursor: pointer; font-size: .9rem;
+  }
+  .btn-del-row:hover { background: #fdecea; }
+</style>
+
+<script>
+  // Chips de rutas recientes → llenan el input
+  document.querySelectorAll('#excel .ruta-nombre, .ruta-nombre').forEach(el => {
+    el.addEventListener('click', () => {
+      document.getElementById('xlsx-sel').value = el.dataset.ruta;
+    });
+  });
+
+  // Eliminar fila
+  document.getElementById('excel-tbody')?.addEventListener('click', e => {
+    if (e.target.classList.contains('btn-del-row')) {
+      e.target.closest('tr').remove();
+      // reindexar
+      document.querySelectorAll('#excel-tbody tr').forEach((tr, i) => tr.dataset.idx = i);
+    }
+  });
+
+  // Agregar fila vacía
+  document.getElementById('btn-add-row')?.addEventListener('click', () => {
+    const tbody = document.getElementById('excel-tbody');
+    const idx = tbody.querySelectorAll('tr').length;
+    const medioOpts = {{ medios | tojson }}.map(m => `<option value="${m}">${m}</option>`).join('');
+    const estadoOpts = {{ estados | tojson }}.map(e => `<option value="${e}">${e}</option>`).join('');
+    const tr = document.createElement('tr');
+    tr.dataset.idx = idx;
+    tr.innerHTML = `
+      <td><select data-field="medio" class="ec-sel"><option value=""></option>${medioOpts}</select></td>
+      <td><input data-field="numero" class="ec-in" value=""></td>
+      <td><input data-field="empresa" class="ec-in" value=""></td>
+      <td><input data-field="nombre" class="ec-in" value=""></td>
+      <td><textarea data-field="servicio" class="ec-ta" rows="2"></textarea></td>
+      <td><input data-field="correo" class="ec-in" value=""></td>
+      <td><input data-field="telefono" class="ec-in ec-sm" value=""></td>
+      <td><input data-field="valor_total" class="ec-in ec-sm" value=""></td>
+      <td><select data-field="estado" class="ec-sel"><option value=""></option>${estadoOpts}</select></td>
+      <td><input data-field="trabajo_realizado_en" class="ec-in" value=""></td>
+      <td><input data-field="orden_servicio" class="ec-in ec-sm" value=""></td>
+      <td><input data-field="fecha" class="ec-in ec-sm" value=""></td>
+      <td><textarea data-field="observacion" class="ec-ta" rows="2"></textarea></td>
+      <td><button type="button" class="btn-del-row" title="Eliminar fila">×</button></td>
+    `;
+    tbody.appendChild(tr);
+    tr.querySelector('input, select').focus();
+  });
+
+  // Serializar tabla → JSON antes de enviar
+  document.getElementById('excel-form')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const filas = [];
+    document.querySelectorAll('#excel-tbody tr').forEach(tr => {
+      const fila = {};
+      tr.querySelectorAll('[data-field]').forEach(el => {
+        fila[el.dataset.field] = el.value.trim();
+      });
+      filas.push(fila);
+    });
+    document.getElementById('filas-json').value = JSON.stringify(filas);
+    this.submit();
+  });
+</script>
+{% endblock %}

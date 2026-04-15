@@ -21,7 +21,8 @@ from jinja2 import Environment, FileSystemLoader
 
 from extract_cotizacion import CotizacionExtractor
 from insert_cotizacion import XLSX_PATH, insert_cotizacion
-from models import DatosCotizacion
+from models import DatosCotizacion, Estado, Medio
+from xlsx_manager import load_filas, save_filas
 
 # ---------------------------------------------------------------------------
 # Configuración
@@ -228,3 +229,73 @@ async def insertar(
             "xlsx_name": xlsx.name,
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Excel manager
+# ---------------------------------------------------------------------------
+
+def _excel_ctx(xlsx_path: str, filas: list, error=None, success_msg=None) -> dict:
+    return {
+        "xlsx_path": xlsx_path,
+        "rutas": _load_rutas(),
+        "filas": filas,
+        "medios": [m.value for m in Medio],
+        "estados": [e.value for e in Estado],
+        "error": error,
+        "success_msg": success_msg,
+    }
+
+
+@app.get("/excel", response_class=HTMLResponse)
+async def excel_view(request: Request, xlsx: str = ""):
+    if not xlsx:
+        rutas = _load_rutas()
+        xlsx = rutas[0] if rutas else str(XLSX_PATH)
+
+    filas, error = [], None
+    xlsx_path = Path(xlsx)
+    if xlsx_path.exists():
+        try:
+            df = load_filas(xlsx_path)
+            filas = df.to_dicts()
+        except Exception as e:
+            error = str(e)
+    else:
+        error = f"Archivo no encontrado: {xlsx}"
+
+    return _render("excel.html", {"request": request, **_excel_ctx(xlsx, filas, error=error)})
+
+
+@app.post("/excel/guardar", response_class=HTMLResponse)
+async def excel_guardar(
+    request: Request,
+    xlsx_path: str = Form(...),
+    filas_json: str = Form(...),
+):
+    xlsx = Path(xlsx_path)
+    if not xlsx.exists():
+        return _render("excel.html", {
+            "request": request,
+            **_excel_ctx(xlsx_path, [], error=f"Archivo no encontrado: {xlsx_path}"),
+        })
+
+    try:
+        filas_raw: list[dict] = json.loads(filas_json)
+        # Limpiar cadenas vacías a None
+        filas = [{k: (v if v else None) for k, v in f.items()} for f in filas_raw]
+        backup_path = save_filas(xlsx, filas)
+        _save_ruta(xlsx_path)
+        msg = f"Guardado correctamente. Backup: {backup_path.name}"
+    except Exception as e:
+        return _render("excel.html", {
+            "request": request,
+            **_excel_ctx(xlsx_path, [], error=str(e)),
+        })
+
+    # Recargar desde disco para mostrar estado actual
+    df = load_filas(xlsx)
+    return _render("excel.html", {
+        "request": request,
+        **_excel_ctx(xlsx_path, df.to_dicts(), success_msg=msg),
+    })
