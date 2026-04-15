@@ -196,6 +196,7 @@ async def insertar(
                 "error_msg": f"Archivo Excel no encontrado: {xlsx}",
                 "numero": datos.numero,
                 "xlsx_name": xlsx.name,
+                "xlsx_path": str(xlsx),
             },
         )
 
@@ -212,6 +213,7 @@ async def insertar(
                 "error_msg": str(e),
                 "numero": datos.numero,
                 "xlsx_name": xlsx.name,
+                "xlsx_path": str(xlsx),
             },
         )
 
@@ -227,6 +229,7 @@ async def insertar(
             "error_msg": None,
             "numero": datos.numero,
             "xlsx_name": xlsx.name,
+            "xlsx_path": str(xlsx),
         },
     )
 
