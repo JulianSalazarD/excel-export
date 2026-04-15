@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Subir cotización{% endblock %}
+
+{% block content %}
+  <div class="step-indicator">
+    <span class="step active">1. Subir</span>
+    <span class="step">2. Revisar</span>
+    <span class="step">3. Confirmar</span>
+  </div>
+
+  <h1>Procesar cotización</h1>
+
+  {% if error %}
+    <div class="error">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" action="/extraer" enctype="multipart/form-data">
+
+    <!-- Paso 1: .docx -->
+    <h2>1. Documento Word (.docx)</h2>
+    <div class="drop-zone" id="drop-zone">
+      <p>Arrastra un archivo .docx aquí o haz clic para seleccionar</p>
+    </div>
+    <input type="file" name="docx_file" id="docx_file" accept=".docx" required style="display:none">
+
+    <!-- Paso 2: .xlsx -->
+    <h2>2. Archivo Excel (.xlsx)</h2>
+    <div class="form-group">
+      <label for="xlsx_option">Seleccionar opción:</label>
+      <select name="xlsx_option" id="xlsx_option" onchange="toggleXlsx()">
+        <option value="default">Usar predeterminado (docs/)</option>
+        <option value="upload">Subir otro archivo .xlsx</option>
+      </select>
+    </div>
+    <div class="form-group" id="xlsx_upload_group" style="display:none;">
+      <label for="xlsx_file">Archivo .xlsx:</label>
+      <input type="file" name="xlsx_file" id="xlsx_file" accept=".xlsx">
+    </div>
+
+    <div class="actions">
+      <button type="submit" class="btn">Extraer datos</button>
+    </div>
+  </form>
+
+  <script>
+    // Drag & drop
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('docx_file');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length && files[0].name.endsWith('.docx')) {
+        fileInput.files = files;
+        dropZone.querySelector('p').textContent = files[0].name;
+      }
+    });
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) {
+        dropZone.querySelector('p').textContent = fileInput.files[0].name;
+      }
+    });
+
+    // Toggle xlsx upload
+    function toggleXlsx() {
+      const opt = document.getElementById('xlsx_option').value;
+      document.getElementById('xlsx_upload_group').style.display =
+        opt === 'upload' ? 'block' : 'none';
+    }
+  </script>
+{% endblock %}

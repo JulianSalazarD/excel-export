@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Revisar datos{% endblock %}
+
+{% block content %}
+  <div class="step-indicator">
+    <span class="step done">1. Subir</span>
+    <span class="step active">2. Revisar</span>
+    <span class="step">3. Confirmar</span>
+  </div>
+
+  <h1>Revisar y editar datos extraídos</h1>
+  <p style="color:#666; margin-bottom:1rem;">
+    Archivo: <strong>{{ docx_name }}</strong>
+  </p>
+
+  <form method="post" action="/insertar">
+    <input type="hidden" name="docx_path" value="{{ docx_path }}">
+    <input type="hidden" name="xlsx_path" value="{{ xlsx_path }}">
+
+    <table class="table-preview">
+      <thead>
+        <tr><th>Campo</th><th>Valor</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>N° Cotización</td>
+          <td><input type="text" name="numero" value="{{ datos.numero or '' }}"></td>
+        </tr>
+        <tr>
+          <td>Nombre</td>
+          <td><input type="text" name="nombre" value="{{ datos.nombre or '' }}"></td>
+        </tr>
+        <tr>
+          <td>Empresa</td>
+          <td><input type="text" name="empresa" value="{{ datos.empresa or '' }}"></td>
+        </tr>
+        <tr>
+          <td>Teléfono</td>
+          <td><input type="text" name="telefono" value="{{ datos.telefono or '' }}"></td>
+        </tr>
+        <tr>
+          <td>Correo</td>
+          <td><input type="text" name="correo" value="{{ datos.correo or '' }}"></td>
+        </tr>
+        <tr>
+          <td>Servicio</td>
+          <td><input type="text" name="servicio" value="{{ datos.servicio or '' }}"></td>
+        </tr>
+        <tr>
+          <td>Valor total</td>
+          <td><input type="text" name="valor_total" value="{{ datos.valor_total or '' }}"></td>
+        </tr>
+        <tr>
+          <td>Fecha</td>
+          <td><input type="text" name="fecha" value="{{ datos.fecha or '' }}"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="actions">
+      <a href="/" class="btn btn-secondary">Cancelar</a>
+      <button type="submit" class="btn btn-success">Insertar en Excel</button>
+    </div>
+  </form>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Resultado{% endblock %}
+
+{% block content %}
+  <div class="step-indicator">
+    <span class="step done">1. Subir</span>
+    <span class="step done">2. Revisar</span>
+    <span class="step active">3. Confirmar</span>
+  </div>
+
+  <h1>Resultado</h1>
+
+  {% if success %}
+    <div class="success-box">
+      <strong>¡Éxito!</strong> La cotización <strong>{{ numero }}</strong>
+      fue insertada en <strong>{{ xlsx_name }}</strong>.
+    </div>
+  {% elif duplicate %}
+    <div class="warning-box">
+      <strong>Duplicado:</strong> La cotización <strong>{{ numero }}</strong>
+      ya existe en <strong>{{ xlsx_name }}</strong>. No se insertó.
+    </div>
+  {% else %}
+    <div class="error">
+      <strong>Error:</strong> {{ error_msg }}
+    </div>
+  {% endif %}
+
+  <div class="actions">
+    <a href="/" class="btn">Procesar otro documento</a>
+  </div>
+{% endblock %}
