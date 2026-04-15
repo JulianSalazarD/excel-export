@@ -24,18 +24,11 @@
     <input type="file" name="docx_file" id="docx_file" accept=".docx" required style="display:none">
 
     <!-- Paso 2: .xlsx -->
-    <h2>2. Archivo Excel (.xlsx)</h2>
-    <div class="form-group">
-      <label for="xlsx_option">Seleccionar opción:</label>
-      <select name="xlsx_option" id="xlsx_option" onchange="toggleXlsx()">
-        <option value="default">Usar predeterminado (docs/)</option>
-        <option value="upload">Subir otro archivo .xlsx</option>
-      </select>
+    <h2>2. Archivo Excel (.xlsx) <small style="color:#888; font-weight:normal;">(opcional, sino usa el predeterminado)</small></h2>
+    <div class="drop-zone" id="xlsx-drop-zone">
+      <p>Arrastra un archivo .xlsx aquí o haz clic para seleccionar</p>
     </div>
-    <div class="form-group" id="xlsx_upload_group" style="display:none;">
-      <label for="xlsx_file">Archivo .xlsx:</label>
-      <input type="file" name="xlsx_file" id="xlsx_file" accept=".xlsx">
-    </div>
+    <input type="file" name="xlsx_file" id="xlsx_file" accept=".xlsx" style="display:none">
 
     <div class="actions">
       <button type="submit" class="btn">Extraer datos</button>
@@ -71,11 +64,32 @@
       }
     });
 
-    // Toggle xlsx upload
-    function toggleXlsx() {
-      const opt = document.getElementById('xlsx_option').value;
-      document.getElementById('xlsx_upload_group').style.display =
-        opt === 'upload' ? 'block' : 'none';
-    }
+    // Drag & drop para .xlsx
+    const xlsxDropZone = document.getElementById('xlsx-drop-zone');
+    const xlsxFileInput = document.getElementById('xlsx_file');
+
+    xlsxDropZone.addEventListener('click', () => xlsxFileInput.click());
+
+    xlsxDropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      xlsxDropZone.classList.add('dragover');
+    });
+    xlsxDropZone.addEventListener('dragleave', () => {
+      xlsxDropZone.classList.remove('dragover');
+    });
+    xlsxDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      xlsxDropZone.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length && files[0].name.endsWith('.xlsx')) {
+        xlsxFileInput.files = files;
+        xlsxDropZone.querySelector('p').textContent = files[0].name;
+      }
+    });
+    xlsxFileInput.addEventListener('change', () => {
+      if (xlsxFileInput.files.length) {
+        xlsxDropZone.querySelector('p').textContent = xlsxFileInput.files[0].name;
+      }
+    });
   </script>
 {% endblock %}

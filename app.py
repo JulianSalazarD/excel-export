@@ -60,7 +60,6 @@ async def index(request: Request):
 async def extraer(
     request: Request,
     docx_file: UploadFile = File(...),
-    xlsx_option: str = Form("default"),
     xlsx_file: UploadFile = File(None),
 ):
     """Recibe el .docx, extrae datos y muestra preview editable."""
@@ -70,7 +69,7 @@ async def extraer(
     docx_path.write_bytes(await docx_file.read())
 
     # Resolver .xlsx
-    if xlsx_option == "upload" and xlsx_file and xlsx_file.filename:
+    if xlsx_file and xlsx_file.filename:
         xlsx_path = UPLOADS_DIR / "destino.xlsx"
         xlsx_path.write_bytes(await xlsx_file.read())
     else:
