@@ -43,22 +43,14 @@ COL_FACTURA = 13         # M  — N° FACTURA (fecha de la cotización)
 DEFAULT_MEDIO  = ""
 DEFAULT_ESTADO = "RECIBIDA"
 
-RE_VALOR_NUMERO = re.compile(r"[\$\s.]")   # limpia "$", espacios y puntos de miles
-
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 def _parse_valor(raw: Optional[str]) -> Optional[float]:
-    """Convierte '$ 9.800.000' o '1.700.000' a float."""
-    if not raw:
-        return None
-    limpio = RE_VALOR_NUMERO.sub("", raw).replace(",", ".")
-    try:
-        return float(limpio)
-    except ValueError:
-        return None
+    """Convierte '$9,800,000' | '$ 9.800.000' | '1.700.000' a float."""
+    from extract_cotizacion import _parse_raw_valor
+    return _parse_raw_valor(raw) if raw else None
 
 
 def _find_sheet(wb: openpyxl.Workbook) -> Worksheet:
