@@ -208,9 +208,13 @@
     tr.querySelector('input, select').focus();
   });
 
-  // Serializar tabla → JSON antes de enviar
-  document.getElementById('excel-form')?.addEventListener('submit', function(e) {
-    e.preventDefault();
+  // ── Dirty-state tracking ──────────────────────────────────────────────────
+  let __excelDirty = false;
+  document.getElementById('excel-tbody')?.addEventListener('input', () => { __excelDirty = true; });
+  document.getElementById('excel-tbody')?.addEventListener('change', () => { __excelDirty = true; });
+
+  // Serializar tabla → JSON (función reutilizable)
+  function serializeExcel() {
     const filas = [];
     document.querySelectorAll('#excel-tbody tr').forEach(tr => {
       const fila = {};
@@ -220,7 +224,35 @@
       filas.push(fila);
     });
     document.getElementById('filas-json').value = JSON.stringify(filas);
+  }
+
+  // Enviar el form mediante fetch (retorna Promise)
+  function guardarExcel() {
+    serializeExcel();
+    const form = document.getElementById('excel-form');
+    return fetch('/excel/guardar', { method: 'POST', body: new FormData(form) });
+  }
+
+  // Capturar submit del formulario
+  document.getElementById('excel-form')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    serializeExcel();
+    __excelDirty = false;
     this.submit();
   });
+
+  // Botón cerrar: preguntar si hay cambios sin guardar
+  window.__beforeShutdown = function() {
+    if (__excelDirty) {
+      const guardar = confirm('Hay cambios sin guardar en el Excel.\n¿Desea guardar antes de cerrar?');
+      if (guardar) {
+        guardarExcel().finally(() => doShutdown());
+      } else {
+        doShutdown();
+      }
+    } else {
+      doShutdown();
+    }
+  };
 </script>
 {% endblock %}

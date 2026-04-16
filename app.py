@@ -12,6 +12,8 @@ Ejecutar:
 """
 
 import json
+import os
+import signal
 import tempfile
 from pathlib import Path
 
@@ -302,3 +304,14 @@ async def excel_guardar(
         "request": request,
         **_excel_ctx(xlsx_path, df.to_dicts(), success_msg=msg),
     })
+
+
+# ---------------------------------------------------------------------------
+# Shutdown
+# ---------------------------------------------------------------------------
+
+@app.post("/shutdown")
+async def shutdown():
+    """Termina el proceso del servidor liberando el puerto."""
+    os.kill(os.getpid(), signal.SIGTERM)
+    return JSONResponse({"ok": True})
