@@ -5,3 +5,6 @@ docs/
 uploads/
 .rutas_xlsx.json
 backups/
+melectra.spec
+build/
+dist/

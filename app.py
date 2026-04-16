@@ -14,6 +14,7 @@ Ejecutar:
 import json
 import os
 import signal
+import sys
 import tempfile
 from pathlib import Path
 
@@ -30,8 +31,18 @@ from xlsx_manager import load_filas, save_filas
 # Configuración
 # ---------------------------------------------------------------------------
 
-BASE_DIR = Path(__file__).parent
-RUTAS_FILE = BASE_DIR / ".rutas_xlsx.json"
+# Cuando está congelado por PyInstaller:
+#   - sys._MEIPASS  → assets bundleados (templates)
+#   - sys.executable parent → junto al .exe, para datos del usuario
+if getattr(sys, "frozen", False):
+    _ASSETS_DIR = Path(sys._MEIPASS)          # templates bundleados
+    _DATA_DIR   = Path(sys.executable).parent  # json, backups
+else:
+    _ASSETS_DIR = Path(__file__).parent
+    _DATA_DIR   = Path(__file__).parent
+
+BASE_DIR   = _ASSETS_DIR
+RUTAS_FILE = _DATA_DIR / ".rutas_xlsx.json"
 
 app = FastAPI(title="Melectra Cotizaciones")
 

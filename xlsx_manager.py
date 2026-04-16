@@ -9,6 +9,7 @@ conservando estilos y fórmulas en el resto del libro.
 from __future__ import annotations
 
 import shutil
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -41,8 +42,9 @@ COL_MAP: dict[str, int] = {
 
 CAMPOS = list(COL_MAP.keys())
 
-# Directorio de backups fijo dentro de la app (independiente de dónde esté el xlsx)
-BACKUP_DIR = Path(__file__).parent / "backups"
+# Directorio de backups junto al ejecutable (o junto al .py en desarrollo)
+_base = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).parent
+BACKUP_DIR = _base / "backups"
 MAX_BACKUPS = 3
 
 
