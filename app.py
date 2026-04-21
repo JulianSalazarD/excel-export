@@ -18,7 +18,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from jinja2 import Environment, FileSystemLoader
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -55,7 +55,7 @@ class LocalhostOnlyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         host = request.headers.get("host", "")
         if host not in _ALLOWED_HOSTS:
-            raise HTTPException(status_code=403, detail="Host no permitido")
+            return JSONResponse({"detail": "Host no permitido"}, status_code=403)
 
         # Para métodos que modifican estado, validar Origin/Referer
         if request.method in ("POST", "PUT", "DELETE", "PATCH"):
@@ -63,12 +63,12 @@ class LocalhostOnlyMiddleware(BaseHTTPMiddleware):
             referer = request.headers.get("referer", "")
             if origin:
                 if origin not in _ALLOWED_ORIGINS:
-                    raise HTTPException(status_code=403, detail="Origen no permitido")
+                    return JSONResponse({"detail": "Origen no permitido"}, status_code=403)
             elif referer:
                 if not any(referer.startswith(o) for o in _ALLOWED_ORIGINS):
-                    raise HTTPException(status_code=403, detail="Referer no permitido")
+                    return JSONResponse({"detail": "Referer no permitido"}, status_code=403)
             else:
-                raise HTTPException(status_code=403, detail="Falta Origin/Referer")
+                return JSONResponse({"detail": "Falta Origin/Referer"}, status_code=403)
 
         return await call_next(request)
 
