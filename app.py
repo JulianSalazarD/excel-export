@@ -18,18 +18,17 @@ import sys
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from jinja2 import Environment, FileSystemLoader
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from extract_cotizacion import CotizacionExtractor
 from insert_cotizacion import XLSX_PATH, insert_cotizacion
 from models import DatosCotizacion, Estado, Medio
 from xlsx_manager import load_filas, save_filas
 
-# ---------------------------------------------------------------------------
 # Configuración
-# ---------------------------------------------------------------------------
 
 # Cuando está congelado por PyInstaller:
 #   - sys._MEIPASS  → assets bundleados (templates)
@@ -45,6 +44,56 @@ BASE_DIR   = _ASSETS_DIR
 RUTAS_FILE = _DATA_DIR / ".rutas_xlsx.json"
 
 app = FastAPI(title="Melectra Cotizaciones")
+
+# Middleware: solo aceptar peticiones locales (anti-CSRF y anti-DNS-rebinding)
+
+_ALLOWED_HOSTS = {"localhost:8000", "127.0.0.1:8000"}
+_ALLOWED_ORIGINS = {"http://localhost:8000", "http://127.0.0.1:8000"}
+
+
+class LocalhostOnlyMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        host = request.headers.get("host", "")
+        if host not in _ALLOWED_HOSTS:
+            raise HTTPException(status_code=403, detail="Host no permitido")
+
+        # Para métodos que modifican estado, validar Origin/Referer
+        if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+            origin = request.headers.get("origin")
+            referer = request.headers.get("referer", "")
+            if origin:
+                if origin not in _ALLOWED_ORIGINS:
+                    raise HTTPException(status_code=403, detail="Origen no permitido")
+            elif referer:
+                if not any(referer.startswith(o) for o in _ALLOWED_ORIGINS):
+                    raise HTTPException(status_code=403, detail="Referer no permitido")
+            else:
+                raise HTTPException(status_code=403, detail="Falta Origin/Referer")
+
+        return await call_next(request)
+
+
+app.add_middleware(LocalhostOnlyMiddleware)
+
+
+# Validación de rutas .xlsx
+
+def _validar_xlsx(ruta: str) -> tuple[Path | None, str | None]:
+    """Valida que la ruta sea un archivo .xlsx existente.
+
+    Retorna (Path, None) si es válido, (None, mensaje_error) si no.
+    """
+    if not ruta or not ruta.strip():
+        return None, "La ruta del archivo Excel está vacía."
+    p = Path(ruta.strip())
+    if p.suffix.lower() != ".xlsx":
+        return None, f"El archivo debe tener extensión .xlsx (recibido: {p.suffix or 'sin extensión'})."
+    if not p.exists():
+        return None, f"Archivo no encontrado: {p}"
+    if p.is_dir():
+        return None, f"La ruta es una carpeta, no un archivo: {p}"
+    return p, None
+
 
 # Jinja2 directo (evita bug con Jinja2Templates en Python 3.14)
 _jinja_env = Environment(loader=FileSystemLoader(str(BASE_DIR / "templates")))
@@ -90,11 +139,7 @@ def _render(template_name: str, context: dict) -> HTMLResponse:
 
 extractor = CotizacionExtractor()
 
-
-# ---------------------------------------------------------------------------
 # Rutas
-# ---------------------------------------------------------------------------
-
 
 @app.post("/rutas/eliminar")
 async def eliminar_ruta(ruta: str = Form(...)):
@@ -124,23 +169,23 @@ async def extraer(
     tmp.close()
     docx_path = Path(tmp.name)
 
-    # Resolver .xlsx: si el usuario escribió una ruta, usarla; sino el default
+    # Resolver .xlsx: si el usuario escribió una ruta, validarla; sino el default
     if xlsx_path_input.strip():
-        xlsx_path = Path(xlsx_path_input.strip())
+        xlsx_path, err = _validar_xlsx(xlsx_path_input)
+        if err:
+            docx_path.unlink(missing_ok=True)
+            return _render(
+                "index.html",
+                {"request": request, "rutas": _load_rutas(), "error": err},
+            )
     else:
-        xlsx_path = XLSX_PATH
-
-    # Verificar que el xlsx existe
-    if not xlsx_path.exists():
-        docx_path.unlink(missing_ok=True)
-        return _render(
-            "index.html",
-            {
-                "request": request,
-                "rutas": _load_rutas(),
-                "error": f"Archivo Excel no encontrado: {xlsx_path}",
-            },
-        )
+        xlsx_path, err = _validar_xlsx(str(XLSX_PATH))
+        if err:
+            docx_path.unlink(missing_ok=True)
+            return _render(
+                "index.html",
+                {"request": request, "rutas": _load_rutas(), "error": err},
+            )
 
     _save_ruta(str(xlsx_path))
 
@@ -194,22 +239,22 @@ async def insertar(
         fecha=fecha or None,
     )
 
-    xlsx = Path(xlsx_path)
-
     # Limpiar archivo temporal del docx
     Path(docx_tmp).unlink(missing_ok=True)
 
-    if not xlsx.exists():
+    xlsx, err = _validar_xlsx(xlsx_path)
+    if err:
+        xlsx_fallback = Path(xlsx_path)
         return _render(
             "result.html",
             {
                 "request": request,
                 "success": False,
                 "duplicate": False,
-                "error_msg": f"Archivo Excel no encontrado: {xlsx}",
+                "error_msg": err,
                 "numero": datos.numero,
-                "xlsx_name": xlsx.name,
-                "xlsx_path": str(xlsx),
+                "xlsx_name": xlsx_fallback.name,
+                "xlsx_path": str(xlsx_fallback),
             },
         )
 
@@ -247,9 +292,7 @@ async def insertar(
     )
 
 
-# ---------------------------------------------------------------------------
 # Excel manager
-# ---------------------------------------------------------------------------
 
 def _excel_ctx(xlsx_path: str, filas: list, error=None, success_msg=None) -> dict:
     return {
@@ -269,16 +312,14 @@ async def excel_view(request: Request, xlsx: str = ""):
         rutas = _load_rutas()
         xlsx = rutas[0] if rutas else str(XLSX_PATH)
 
-    filas, error = [], None
-    xlsx_path = Path(xlsx)
-    if xlsx_path.exists():
+    xlsx_path, error = _validar_xlsx(xlsx)
+    filas = []
+    if xlsx_path:
         try:
             df = load_filas(xlsx_path)
             filas = df.to_dicts()
         except Exception as e:
             error = str(e)
-    else:
-        error = f"Archivo no encontrado: {xlsx}"
 
     return _render("excel.html", {"request": request, **_excel_ctx(xlsx, filas, error=error)})
 
@@ -289,11 +330,11 @@ async def excel_guardar(
     xlsx_path: str = Form(...),
     filas_json: str = Form(...),
 ):
-    xlsx = Path(xlsx_path)
-    if not xlsx.exists():
+    xlsx, err = _validar_xlsx(xlsx_path)
+    if err:
         return _render("excel.html", {
             "request": request,
-            **_excel_ctx(xlsx_path, [], error=f"Archivo no encontrado: {xlsx_path}"),
+            **_excel_ctx(xlsx_path, [], error=err),
         })
 
     try:
