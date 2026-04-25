@@ -2,14 +2,22 @@
 extract_cotizacion.py
 Extrae datos clave de cotizaciones Melectra (.docx).
 
+Estructura esperada del documento (líneas no vacías):
+  1  → COTIZACIÓN No. XXX
+  2  → Fecha (con ciudad)
+  3  → Saludo / título (Señor, Ingeniero, etc.)
+  4  → Nombre de la persona
+  5+ → Empresa (posiblemente precedida por cargo)
+  …  → Email(s), Teléfono(s), ASUNTO
+
 Campos extraídos:
-  - numero        → cuerpo del doc (sin espacios) y/o nombre de archivo, se comparan
-  - nombre        → debajo de "Señor" / "Señora"
-  - empresa       → debajo del nombre, saltando cargo si lo hay; comparado con filename
-  - telefono      → después de "Móvil:" / "Movil:" / "Cel:"
-  - correo        → después de "E-mail:"
+  - numero        → cuerpo del doc (sin espacios) y/o nombre de archivo
+  - nombre        → 4ª línea no vacía del documento
+  - empresa       → 5ª+ línea no vacía, saltando cargo/ciudad/contacto
+  - telefono      → todos los teléfonos (Móvil, Cel, Teléfono)
+  - correo        → todos los correos encontrados
   - servicio      → después de "ASUNTO:" (párrafos continuos hasta línea vacía)
-  - valor_total   → valor máximo en la columna "VALOR TOTAL ANTES DE IVA"
+  - valor_total   → fila resumen o valor máximo en la columna de valor
   - fecha         → fecha al inicio del documento, convertida a DD/MM/YYYY
 """
 
@@ -60,12 +68,14 @@ def fecha_a_ddmmyyyy(texto: str | None) -> str | None:
 # ---------------------------------------------------------------------------
 
 RE_NUMERO    = re.compile(r"COTIZACI[OÓ]N\s+No\.?\s*(.+)", re.IGNORECASE)
-RE_SENIOR    = re.compile(r"^Se[ñn]or[a]?\s*$", re.IGNORECASE)
-RE_MOVIL     = re.compile(r"(?:M[oó]vil|Movil|Cel)\s*:\s*(.+)", re.IGNORECASE)
+RE_TEL       = re.compile(
+    r"(?:M[oó]vil|Movil|Cel(?:ular)?|Tel[eé]fono(?:\s+fijo)?)\s*:\s*(.+)",
+    re.IGNORECASE,
+)
 RE_EMAIL     = re.compile(r"E-?mail\s*:\s*(.+)", re.IGNORECASE)
 RE_ASUNTO    = re.compile(r"ASUNTO\s*:\s*(.+)", re.IGNORECASE)
 RE_FECHA     = re.compile(r"\d{1,2}\s+de\s+\w+\s+del?\s+\d{4}", re.IGNORECASE)
-RE_VALOR_HDR = re.compile(r"VALOR\s+TOTAL[,]?\s+ANTES\s+(?:DE(?:L)?\s+)?IVA", re.IGNORECASE)
+RE_VALOR_HDR = re.compile(r"VALOR\s+TOTAL(?:\s+DEL\s+MES)?[,]?\s+ANTES\s+(?:DE(?:L)?\s+)?IVA", re.IGNORECASE)
 
 # Extrae el número de cotización del nombre del archivo: "COT 040401-26SV-W ..."
 RE_NUM_FILE  = re.compile(r"COT\s+([\w-]+)", re.IGNORECASE)
@@ -79,8 +89,22 @@ RE_EMP_FILE  = re.compile(
     re.IGNORECASE,
 )
 
-# Patrones que indican que una línea es información de contacto (no empresa)
-RE_CONTACTO  = re.compile(r"M[oó]vil|Movil|Cel|E-?mail|ASUNTO", re.IGNORECASE)
+# Patrones que indican que una línea NO es la empresa
+RE_CONTACTO  = re.compile(r"M[oó]vil|Movil|Cel|Tel[eé]fono|E-?mail|ASUNTO", re.IGNORECASE)
+RE_CARGO     = re.compile(
+    r"^(?:Jef[ae]\s|Coordinador\s|Profesional\s|Analista\s|Asistente\s"
+    r"|Gerente\s|Director\s|Ingenier[oía]|Compras$)",
+    re.IGNORECASE,
+)
+RE_CIUDAD    = re.compile(
+    r"^(?:Medell[ií]n|Copacabana|Itag[uü][ií]|Bogot[áa]|Cali"
+    r"|Barranquilla|Bucaramanga|Cartagena|Cúcuta|Pereira|Manizales)$",
+    re.IGNORECASE,
+)
+
+# Filtros para excluir datos de contacto propios de Melectra
+_MELECTRA_DOMAINS = {"melectra.com", "melectra.com.co"}
+_MELECTRA_PHONES  = {"3232774518", "3052655310", "3113753455"}
 
 
 # ---------------------------------------------------------------------------
@@ -128,11 +152,25 @@ class CotizacionExtractor:
         doc = Document(str(path))
         paragraphs = [p.text.strip() for p in doc.paragraphs]
         tables = doc.tables
+        non_empty = [t for t in paragraphs if t]
 
         datos = DatosCotizacion()
         datos.numero      = self._extract_numero(paragraphs, path)
-        datos.nombre      = self._extract_nombre(paragraphs)
-        datos.empresa     = self._extract_empresa(paragraphs, path)
+        datos.nombre      = self._extract_nombre(non_empty)
+        datos.empresa     = self._extract_empresa(non_empty, path)
+
+        # Si no se encontró empresa por posición, intentar extraerla del
+        # mismo párrafo del nombre (ej: "Francisco Torres \nAMTEX")
+        if not datos.empresa and datos.nombre:
+            filtradas = [
+                t for t in non_empty if not re.match(r"^[\d.\s]+$", t)
+            ]
+            if len(filtradas) >= 4:
+                nombre_line = filtradas[3]
+                partes = nombre_line.split("\n")
+                if len(partes) > 1:
+                    datos.empresa = partes[1].strip() or None
+
         datos.telefono    = self._extract_telefono(paragraphs)
         datos.correo      = self._extract_correo(paragraphs)
         datos.servicio    = self._extract_servicio(paragraphs)
@@ -173,71 +211,92 @@ class CotizacionExtractor:
                 break
 
         filename = self._numero_from_filename(path) if path else None
-
-        # Preferir el del cuerpo; si no hay, usar el del nombre de archivo
         return body or filename
 
-    def _extract_nombre(self, paragraphs: list[str]) -> Optional[str]:
-        """Línea inmediatamente después de 'Señor' / 'Señora'."""
-        for i, text in enumerate(paragraphs):
-            if RE_SENIOR.match(text) and i + 1 < len(paragraphs):
-                candidate = paragraphs[i + 1].strip()
-                if candidate:
-                    return candidate
+    def _extract_nombre(self, non_empty: list[str]) -> Optional[str]:
+        """4ª línea no vacía del documento (índice 3).
+
+        Filtra líneas que sean solo números/puntos (ej. "26.") y toma
+        solo la primera parte si hay salto de línea embebido.
+        """
+        filtradas = [
+            t for t in non_empty
+            if not re.match(r"^[\d.\s]+$", t)
+        ]
+        if len(filtradas) >= 4:
+            nombre = filtradas[3].strip()
+            # Si hay salto de línea embebido, tomar solo la primera parte
+            nombre = nombre.split("\n")[0].strip()
+            # Limpiar puntuación final
+            nombre = nombre.rstrip(". ")
+            return nombre or None
         return None
 
-    def _extract_empresa(self, paragraphs: list[str], path: Optional[Path] = None) -> Optional[str]:
+    def _extract_empresa(self, non_empty: list[str], path: Optional[Path] = None) -> Optional[str]:
         """
-        Busca la empresa debajo de Señor/Señora, saltando el cargo si lo hay.
-        Estrategia: acumula líneas no-vacías y no-contacto tras el nombre;
-        usa la última (la empresa suele aparecer después del cargo).
+        Busca la empresa a partir de la 5ª línea no vacía (índice 4).
+        Salta líneas que sean cargo, ciudad, contacto o solo números.
         Compara con el nombre del archivo como referencia.
         """
         empresa_file = self._empresa_from_filename(path) if path else None
 
-        for i, text in enumerate(paragraphs):
-            if not RE_SENIOR.match(text):
+        filtradas = [
+            t for t in non_empty
+            if not re.match(r"^[\d.\s]+$", t)
+        ]
+
+        for j in range(4, min(len(filtradas), 10)):
+            linea = filtradas[j].strip()
+            if not linea:
                 continue
-
-            # Recopilar candidatos: líneas no vacías que no sean contacto
-            candidatos: list[str] = []
-            for j in range(i + 2, min(i + 6, len(paragraphs))):
-                linea = paragraphs[j].strip()
-                if not linea:
-                    break
-                if RE_CONTACTO.search(linea):
-                    break
-                candidatos.append(linea)
-
-            if not candidatos:
+            if RE_CONTACTO.search(linea):
+                break
+            if RE_ASUNTO.search(linea):
+                break
+            if RE_CARGO.match(linea):
                 continue
-
+            if RE_CIUDAD.match(linea):
+                continue
             # Si hay referencia del filename, preferir la que coincida
-            if empresa_file:
-                ef = empresa_file.upper()
-                for c in candidatos:
-                    if ef in c.upper():
-                        return c
+            if empresa_file and empresa_file.upper() in linea.upper():
+                return linea
+            # Primera línea que no sea cargo/ciudad/contacto → empresa
+            return linea
 
-            # Sin referencia: la última candidata es la empresa
-            # (cargo siempre viene antes que la empresa)
-            return candidatos[-1]
+        # Fallback: usar el nombre del archivo
+        return empresa_file
 
-        return None
+    @staticmethod
+    def _is_melectra_phone(valor: str) -> bool:
+        """Detecta teléfonos propios de Melectra por número conocido."""
+        normalizado = re.sub(r"[\s\-]", "", valor)
+        return normalizado in _MELECTRA_PHONES
 
     def _extract_telefono(self, paragraphs: list[str]) -> Optional[str]:
+        """Extrae TODOS los teléfonos encontrados, excluyendo los de Melectra."""
+        encontrados: list[str] = []
         for text in paragraphs:
-            m = RE_MOVIL.search(text)
-            if m:
-                return m.group(1).strip()
-        return None
+            for m in RE_TEL.finditer(text):
+                valor = m.group(1).strip()
+                if valor and not self._is_melectra_phone(valor):
+                    encontrados.append(valor)
+        return ", ".join(encontrados) if encontrados else None
 
     def _extract_correo(self, paragraphs: list[str]) -> Optional[str]:
+        """Extrae TODOS los correos encontrados, excluyendo los de Melectra."""
+        encontrados: list[str] = []
         for text in paragraphs:
             m = RE_EMAIL.search(text)
             if m:
-                return m.group(1).strip()
-        return None
+                raw = m.group(1).strip()
+                partes = re.split(r"[;,\s]+(?:y\s+)?(?=\S+@)", raw)
+                for parte in partes:
+                    parte = parte.strip().strip(";,–- .")
+                    if parte and "@" in parte:
+                        dominio = parte.split("@")[-1].lower()
+                        if dominio not in _MELECTRA_DOMAINS:
+                            encontrados.append(parte)
+        return ", ".join(encontrados) if encontrados else None
 
     def _extract_servicio(self, paragraphs: list[str]) -> Optional[str]:
         """
@@ -265,10 +324,13 @@ class CotizacionExtractor:
 
     def _extract_valor_total(self, tables: list[Table]) -> Optional[str]:
         """
-        Recorre todas las tablas buscando la columna VALOR TOTAL ANTES DE IVA.
-        Devuelve el valor más alto encontrado formateado como '$X,XXX,XXX'.
+        Busca en la última tabla con columna de valor:
+        1. Si hay fila resumen "VALOR TOTAL ANTES DE IVA" → usar ese valor.
+        2. Si no → tomar el valor más alto de la columna.
+        Limpia '=' al final del valor.
         """
         max_val: Optional[float] = None
+        resumen_val: Optional[float] = None
 
         for table in tables:
             if not table.rows:
@@ -284,11 +346,19 @@ class CotizacionExtractor:
             for row in table.rows[1:]:
                 if col_idx >= len(row.cells):
                     continue
-                raw = row.cells[col_idx].text.strip()
+                raw = row.cells[col_idx].text.strip().rstrip("=").strip()
                 if not raw:
                     continue
                 n = _parse_raw_valor(raw)
-                if n is not None and (max_val is None or n > max_val):
+                if n is None:
+                    continue
+
+                # Detectar fila resumen (primera celda contiene "VALOR TOTAL")
+                primera_celda = row.cells[0].text.strip().upper()
+                if "VALOR TOTAL" in primera_celda:
+                    resumen_val = n
+                elif max_val is None or n > max_val:
                     max_val = n
 
-        return _format_valor(max_val) if max_val is not None else None
+        resultado = resumen_val if resumen_val is not None else max_val
+        return _format_valor(resultado) if resultado is not None else None

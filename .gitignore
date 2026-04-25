@@ -8,3 +8,5 @@ backups/
 melectra.spec
 build/
 dist/
+
+.qwen
