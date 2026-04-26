@@ -24,6 +24,7 @@ const fields = {
   correo: document.getElementById('correo'),
   servicio: document.getElementById('servicio'),
   valor_total: document.getElementById('valor_total'),
+  medio: document.getElementById('medio'),
   estado: document.getElementById('estado'),
   trabajo_realizado_en: document.getElementById('trabajo_realizado_en'),
   orden_servicio: document.getElementById('orden_servicio'),
@@ -103,6 +104,7 @@ extractBtn.addEventListener('click', async () => {
     fields.correo.value = datos.correo || '';
     fields.servicio.value = datos.servicio || '';
     fields.valor_total.value = datos.valor_total || '';
+    fields.medio.value = datos.medio || '';
     fields.estado.value = datos.estado || 'RECIBIDA';
     fields.trabajo_realizado_en.value = datos.trabajo_realizado_en || '';
     fields.orden_servicio.value = datos.orden_servicio || '';
@@ -176,6 +178,7 @@ insertBtn.addEventListener('click', async () => {
       correo: fields.correo.value || null,
       servicio: fields.servicio.value || null,
       valor_total: fields.valor_total.value || null,
+      medio: fields.medio.value || null,
       estado: fields.estado.value || null,
       trabajo_realizado_en: fields.trabajo_realizado_en.value || null,
       orden_servicio: fields.orden_servicio.value || null,
@@ -189,12 +192,8 @@ insertBtn.addEventListener('click', async () => {
 
     if (resultado) {
       // Limpiar formulario
-      Object.values(fields).forEach(field => {
-        if (field.tagName === 'SELECT') {
-          field.value = 'RECIBIDA';
-        } else {
-          field.value = '';
-        }
+      Object.entries(fields).forEach(([name, field]) => {
+        field.value = name === 'estado' ? 'RECIBIDA' : '';
       });
 
       // Volver al menú principal y mostrar mensaje

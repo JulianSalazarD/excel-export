@@ -29,7 +29,7 @@ def main() -> None:
 
     try:
         wb = load_workbook(xlsx_path)
-        sheets = wb.sheetnames
+        sheets = [n for n in wb.sheetnames if "DESPLEGABLE" not in n.upper()]
         wb.close()
 
         print(json.dumps({"sheets": sheets}))

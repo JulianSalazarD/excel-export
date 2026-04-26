@@ -59,7 +59,7 @@ def main() -> None:
 
         # Solo imprimir JSON por stdout (sin líneas adicionales)
         print(json.dumps({"insertado": resultado}))
-        sys.exit(0 if resultado else 1)
+        sys.exit(0)
 
     except json.JSONDecodeError as e:
         print(json.dumps({"error": f"JSON inválido: {e}"}))

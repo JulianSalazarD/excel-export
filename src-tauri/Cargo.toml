@@ -5,10 +5,6 @@ description = "Extractor de cotizaciones Melectra"
 authors = ["Melectra"]
 edition = "2021"
 
-[lib]
-name = "melectra_app_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
-
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

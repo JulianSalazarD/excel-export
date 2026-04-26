@@ -18,17 +18,15 @@
     <!-- Ventana principal: Selección de archivos -->
     <section id="main-window" class="window active">
       <div class="form-group">
-        <label for="docx-input">📄 Archivo .docx de cotización:</label>
+        <label for="docx-filename">📄 Archivo .docx de cotización:</label>
         <div class="file-input-wrapper">
-          <input type="file" id="docx-input" accept=".docx" />
           <span id="docx-filename" class="filename">Seleccionar archivo...</span>
         </div>
       </div>
 
       <div class="form-group">
-        <label for="xlsx-input">📊 Archivo Excel de destino:</label>
+        <label for="xlsx-filename">📊 Archivo Excel de destino:</label>
         <div class="file-input-wrapper">
-          <input type="file" id="xlsx-input" accept=".xlsx" />
           <span id="xlsx-filename" class="filename">Seleccionar archivo...</span>
         </div>
       </div>
@@ -92,8 +90,25 @@
             <option value="">Seleccionar...</option>
             <option value="RECIBIDA">RECIBIDA</option>
             <option value="EN PROCESO">EN PROCESO</option>
+            <option value="ACTUALIZADA">ACTUALIZADA</option>
             <option value="APROBADA">APROBADA</option>
             <option value="RECHAZADA">RECHAZADA</option>
+            <option value="FACTURADA">FACTURADA</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="medio">Medio:</label>
+          <select id="medio">
+            <option value="">Seleccionar...</option>
+            <option value="NUEVO">NUEVO</option>
+            <option value="REFERIDO">REFERIDO</option>
+            <option value="CLIENTE">CLIENTE</option>
+            <option value="WSP">WSP</option>
+            <option value="LÍNEA">LÍNEA</option>
+            <option value="PÁGINA">PÁGINA</option>
+            <option value="CORREO">CORREO</option>
+            <option value="INSTAGRAM">INSTAGRAM</option>
           </select>
         </div>
 

@@ -10,7 +10,7 @@ class Medio(str, Enum):
     REFERIDO   = "REFERIDO"
     CLIENTE    = "CLIENTE"
     WSP        = "WSP"
-    LINEA      = "LÍINEA"
+    LINEA      = "LÍNEA"
     PAGINA     = "PÁGINA"
     CORREO     = "CORREO"
     INSTAGRAM  = "INSTAGRAM"
@@ -18,6 +18,7 @@ class Medio(str, Enum):
 
 class Estado(str, Enum):
     RECIBIDA    = "RECIBIDA"
+    EN_PROCESO  = "EN PROCESO"
     ACTUALIZADA = "ACTUALIZADA"
     RECHAZADA   = "RECHAZADA"
     APROBADA    = "APROBADA"

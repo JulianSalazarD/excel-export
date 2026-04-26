@@ -32,6 +32,7 @@ struct DatosCotizacion {
     correo: Option<String>,
     servicio: Option<String>,
     valor_total: Option<String>,
+    medio: Option<String>,
     estado: Option<String>,
     trabajo_realizado_en: Option<String>,
     orden_servicio: Option<String>,
@@ -82,17 +83,14 @@ fn insert_cotizacion(datos: DatosCotizacion, xlsx_path: String, sheet_name: Opti
     let output = cmd.output()
         .map_err(|e| format!("Error ejecutando insertador: {}", e))?;
 
-    // Leer stdout independientemente del código de salida
     let stdout_str = String::from_utf8_lossy(&output.stdout);
-    
-    // Si el proceso falló con un código diferente a 1 (que indica duplicado), retornar error
-    if !output.status.success() && output.status.code() != Some(1) {
+
+    if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Insertador falló (código {})\nStdout: {}\nStderr: {}", 
+        return Err(format!("Insertador falló (código {})\nStdout: {}\nStderr: {}",
             output.status.code().unwrap_or(-1), stdout_str, stderr));
     }
 
-    // Parsear el resultado JSON del stdout
     let result_json: serde_json::Value = serde_json::from_str(&stdout_str)
         .map_err(|e| format!("Error parseando resultado JSON: {}\nSalida: {}", e, stdout_str))?;
 
