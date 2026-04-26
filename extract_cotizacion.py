@@ -102,10 +102,6 @@ RE_CIUDAD    = re.compile(
     re.IGNORECASE,
 )
 
-# Filtros para excluir datos de contacto propios de Melectra
-_MELECTRA_DOMAINS = {"melectra.com", "melectra.com.co"}
-_MELECTRA_PHONES  = {"3232774518", "3052655310", "3113753455"}
-
 
 # ---------------------------------------------------------------------------
 # Helpers de valor
@@ -171,8 +167,16 @@ class CotizacionExtractor:
                 if len(partes) > 1:
                     datos.empresa = partes[1].strip() or None
 
-        datos.telefono    = self._extract_telefono(paragraphs)
-        datos.correo      = self._extract_correo(paragraphs)
+        # Solo extraer teléfono/correo de los párrafos antes del ASUNTO
+        # (evita capturar datos de Melectra del footer/firma)
+        header_paras = paragraphs
+        for i, text in enumerate(paragraphs):
+            if RE_ASUNTO.search(text):
+                header_paras = paragraphs[:i]
+                break
+
+        datos.telefono    = self._extract_telefono(header_paras)
+        datos.correo      = self._extract_correo(header_paras)
         datos.servicio    = self._extract_servicio(paragraphs)
         datos.valor_total = self._extract_valor_total(tables)
         datos.fecha       = self._extract_fecha(paragraphs)
@@ -266,24 +270,18 @@ class CotizacionExtractor:
         # Fallback: usar el nombre del archivo
         return empresa_file
 
-    @staticmethod
-    def _is_melectra_phone(valor: str) -> bool:
-        """Detecta teléfonos propios de Melectra por número conocido."""
-        normalizado = re.sub(r"[\s\-]", "", valor)
-        return normalizado in _MELECTRA_PHONES
-
     def _extract_telefono(self, paragraphs: list[str]) -> Optional[str]:
-        """Extrae TODOS los teléfonos encontrados, excluyendo los de Melectra."""
+        """Extrae TODOS los teléfonos encontrados (Móvil, Cel, Teléfono)."""
         encontrados: list[str] = []
         for text in paragraphs:
             for m in RE_TEL.finditer(text):
                 valor = m.group(1).strip()
-                if valor and not self._is_melectra_phone(valor):
+                if valor:
                     encontrados.append(valor)
         return ", ".join(encontrados) if encontrados else None
 
     def _extract_correo(self, paragraphs: list[str]) -> Optional[str]:
-        """Extrae TODOS los correos encontrados, excluyendo los de Melectra."""
+        """Extrae TODOS los correos encontrados en todas las líneas."""
         encontrados: list[str] = []
         for text in paragraphs:
             m = RE_EMAIL.search(text)
@@ -293,9 +291,7 @@ class CotizacionExtractor:
                 for parte in partes:
                     parte = parte.strip().strip(";,–- .")
                     if parte and "@" in parte:
-                        dominio = parte.split("@")[-1].lower()
-                        if dominio not in _MELECTRA_DOMAINS:
-                            encontrados.append(parte)
+                        encontrados.append(parte)
         return ", ".join(encontrados) if encontrados else None
 
     def _extract_servicio(self, paragraphs: list[str]) -> Optional[str]:
