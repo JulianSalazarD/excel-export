@@ -10,3 +10,7 @@ build/
 dist/
 
 .qwen
+
+tauri-app
+
+*.spec

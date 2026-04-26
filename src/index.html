@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Melectra - Extractor de Cotizaciones</title>
+  <script type="module" src="/main.js" defer></script>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>🏭 Melectra - Extractor de Cotizaciones</h1>
+      <p class="subtitle">Extrae datos de cotizaciones .docx e inserta en Excel</p>
+    </header>
+
+    <!-- Ventana principal: Selección de archivos -->
+    <section id="main-window" class="window active">
+      <div class="form-group">
+        <label for="docx-input">📄 Archivo .docx de cotización:</label>
+        <div class="file-input-wrapper">
+          <input type="file" id="docx-input" accept=".docx" />
+          <span id="docx-filename" class="filename">Seleccionar archivo...</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="xlsx-input">📊 Archivo Excel de destino:</label>
+        <div class="file-input-wrapper">
+          <input type="file" id="xlsx-input" accept=".xlsx" />
+          <span id="xlsx-filename" class="filename">Seleccionar archivo...</span>
+        </div>
+      </div>
+
+      <button id="extract-btn" class="btn-primary" disabled>🔍 Extraer datos</button>
+    </section>
+
+    <div id="flash-message" class="flash hidden">
+      <span id="flash-text"></span>
+      <button id="flash-ok-btn">OK</button>
+    </div>
+
+    <!-- Ventana de revisión: Campos editables -->
+    <section id="review-window" class="window">
+      <h2>📋 Revisar datos extraídos</h2>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="numero">Número de cotización:</label>
+          <input type="text" id="numero" placeholder="010401-26IP-W" />
+        </div>
+
+        <div class="form-group">
+          <label for="nombre">Nombre del cliente:</label>
+          <input type="text" id="nombre" placeholder="Juan Pérez" />
+        </div>
+
+        <div class="form-group">
+          <label for="empresa">Empresa:</label>
+          <input type="text" id="empresa" placeholder="Empresa S.A.S." />
+        </div>
+
+        <div class="form-group">
+          <label for="telefono">Teléfono:</label>
+          <input type="text" id="telefono" placeholder="3001234567" />
+        </div>
+
+        <div class="form-group">
+          <label for="correo">Correo electrónico:</label>
+          <input type="text" id="correo" placeholder="cliente@empresa.com" />
+        </div>
+
+        <div class="form-group">
+          <label for="fecha">Fecha:</label>
+          <input type="text" id="fecha" placeholder="01/04/2026" />
+        </div>
+
+        <div class="form-group full-width">
+          <label for="servicio">Servicio:</label>
+          <textarea id="servicio" placeholder="Descripción del servicio..." rows="2"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="valor_total">Valor total:</label>
+          <input type="text" id="valor_total" placeholder="$1,100,000" />
+        </div>
+
+        <div class="form-group">
+          <label for="estado">Estado:</label>
+          <select id="estado">
+            <option value="">Seleccionar...</option>
+            <option value="RECIBIDA">RECIBIDA</option>
+            <option value="EN PROCESO">EN PROCESO</option>
+            <option value="APROBADA">APROBADA</option>
+            <option value="RECHAZADA">RECHAZADA</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="trabajo_realizado_en">Trabajo realizado en:</label>
+          <input type="text" id="trabajo_realizado_en" placeholder="Medellín" />
+        </div>
+
+        <div class="form-group">
+          <label for="orden_servicio">Orden de servicio:</label>
+          <input type="text" id="orden_servicio" placeholder="OS-2026-001" />
+        </div>
+
+        <div class="form-group full-width">
+          <label for="observacion">Observación:</label>
+          <textarea id="observacion" placeholder="Notas adicionales..." rows="2"></textarea>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="sheet-select">Hoja de Excel:</label>
+        <select id="sheet-select">
+          <option value="">Seleccionar hoja...</option>
+        </select>
+      </div>
+
+      <div class="button-group">
+        <button id="back-btn" class="btn-secondary">← Volver</button>
+        <button id="insert-btn" class="btn-primary">✓ Insertar en Excel</button>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <p>Melectra - Sistema de Gestión de Cotizaciones</p>
+    </footer>
+  </div>
+</body>
+</html>

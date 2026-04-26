@@ -71,7 +71,6 @@ def insert_cotizacion(
 
     if skip_duplicates and datos.numero:
         if datos.numero in _existing_numeros(ws, data_start):
-            print(f"  [OMITIDO] {datos.numero} ya existe en la hoja.")
             return False
 
     insert_row(ws, datos, data_start)
