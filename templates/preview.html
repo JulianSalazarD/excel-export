@@ -8,13 +8,27 @@
   </div>
 
   <h1>Revisar y editar datos extraídos</h1>
-  <p style="color:#666; margin-bottom:1rem;">
+  <p style="color:#666; margin-bottom:.5rem;">
     Archivo: <strong>{{ docx_name }}</strong>
   </p>
 
   <form method="post" action="/insertar">
     <input type="hidden" name="docx_tmp" value="{{ docx_tmp }}">
     <input type="hidden" name="xlsx_path" value="{{ xlsx_path }}">
+
+    {% if sheets %}
+    <div style="margin-bottom:1rem;">
+      <label for="sheet_name" style="display:inline;font-weight:600;color:#555;">Hoja de destino:</label>
+      <select name="sheet_name" id="sheet_name"
+              style="padding:.35rem .5rem;border:1px solid #ccc;border-radius:3px;font-size:.9rem;min-width:200px;">
+        {% for s in sheets %}
+        <option value="{{ s }}" {% if s == selected_sheet %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% else %}
+      <input type="hidden" name="sheet_name" value="">
+    {% endif %}
 
     <table class="table-preview">
       <thead>

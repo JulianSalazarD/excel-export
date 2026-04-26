@@ -27,7 +27,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from extract_cotizacion import CotizacionExtractor
 from insert_cotizacion import XLSX_PATH, insert_cotizacion
 from models import DatosCotizacion, Estado, Medio
-from xlsx_manager import load_filas, save_filas
+from xlsx_manager import find_month_sheet, list_sheets, load_filas, save_filas
 
 # Configuración
 
@@ -200,6 +200,14 @@ async def extraer(
             {"request": request, "error": f"Error al procesar .docx: {e}"},
         )
 
+    # Leer hojas del Excel y detectar la del mes actual
+    try:
+        sheets = list_sheets(xlsx_path)
+        selected_sheet = find_month_sheet(sheets)
+    except Exception:
+        sheets = []
+        selected_sheet = None
+
     return _render(
         "preview.html",
         {
@@ -210,6 +218,8 @@ async def extraer(
             "xlsx_path": str(xlsx_path),
             "medios": [m.value for m in Medio],
             "estados": [e.value for e in Estado],
+            "sheets": sheets,
+            "selected_sheet": selected_sheet,
         },
     )
 
@@ -219,6 +229,7 @@ async def insertar(
     request: Request,
     docx_tmp: str = Form(...),
     xlsx_path: str = Form(...),
+    sheet_name: str = Form(""),
     medio: str = Form(""),
     numero: str = Form(""),
     nombre: str = Form(""),
@@ -262,7 +273,7 @@ async def insertar(
 
     # Intentar insertar directamente en el archivo del usuario
     try:
-        inserted = insert_cotizacion(datos, xlsx_path=xlsx)
+        inserted = insert_cotizacion(datos, xlsx_path=xlsx, sheet_name=sheet_name or None)
     except Exception as e:
         msg = quote(str(e))
         return RedirectResponse(f"/?msg={msg}&tipo=error", status_code=303)

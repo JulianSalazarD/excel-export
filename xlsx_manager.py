@@ -20,6 +20,12 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from models import DatosCotizacion
 
+# Nombres de meses en español para detectar la hoja del mes actual
+_MESES_ES = [
+    "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+    "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
+]
+
 # ---------------------------------------------------------------------------
 # Mapeo campo → columna (1-indexed)
 # ---------------------------------------------------------------------------
@@ -66,6 +72,27 @@ def find_header_row(ws: Worksheet) -> int:
             if cell.value and "MEDIO" in str(cell.value).upper():
                 return cell.row
     return 5  # fallback
+
+
+def list_sheets(xlsx_path: Path) -> list[str]:
+    """Retorna los nombres de hojas del libro, excluyendo DESPLEGABLE."""
+    wb = openpyxl.load_workbook(xlsx_path, read_only=True)
+    return [n for n in wb.sheetnames if "DESPLEGABLE" not in n.upper()]
+
+
+def find_month_sheet(sheets: list[str]) -> Optional[str]:
+    """Busca la hoja que coincida con el mes actual (ej: 'MAYO 2026')."""
+    mes_actual = _MESES_ES[datetime.now().month - 1]
+    anio_actual = str(datetime.now().year)
+    # Primero buscar coincidencia exacta mes+año
+    for s in sheets:
+        if mes_actual in s.upper() and anio_actual in s:
+            return s
+    # Luego solo mes
+    for s in sheets:
+        if mes_actual in s.upper():
+            return s
+    return sheets[0] if sheets else None
 
 
 def _cell_str(value) -> Optional[str]:

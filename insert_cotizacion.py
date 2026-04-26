@@ -59,9 +59,13 @@ def insert_cotizacion(
     datos: DatosCotizacion,
     xlsx_path: Path = XLSX_PATH,
     skip_duplicates: bool = True,
+    sheet_name: Optional[str] = None,
 ) -> bool:
     wb = load_workbook(xlsx_path)
-    ws = find_data_sheet(wb)
+    if sheet_name and sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+    else:
+        ws = find_data_sheet(wb)
     header_row = find_header_row(ws)
     data_start = header_row + 1
 
