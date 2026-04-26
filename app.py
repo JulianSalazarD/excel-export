@@ -17,9 +17,10 @@ import signal
 import sys
 import tempfile
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from jinja2 import Environment, FileSystemLoader
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -256,52 +257,23 @@ async def insertar(
 
     xlsx, err = _validar_xlsx(xlsx_path)
     if err:
-        xlsx_fallback = Path(xlsx_path)
-        return _render(
-            "result.html",
-            {
-                "request": request,
-                "success": False,
-                "duplicate": False,
-                "error_msg": err,
-                "numero": datos.numero,
-                "xlsx_name": xlsx_fallback.name,
-                "xlsx_path": str(xlsx_fallback),
-            },
-        )
+        msg = quote(err)
+        return RedirectResponse(f"/?msg={msg}&tipo=error", status_code=303)
 
     # Intentar insertar directamente en el archivo del usuario
     try:
         inserted = insert_cotizacion(datos, xlsx_path=xlsx)
     except Exception as e:
-        return _render(
-            "result.html",
-            {
-                "request": request,
-                "success": False,
-                "duplicate": False,
-                "error_msg": str(e),
-                "numero": datos.numero,
-                "xlsx_name": xlsx.name,
-                "xlsx_path": str(xlsx),
-            },
-        )
+        msg = quote(str(e))
+        return RedirectResponse(f"/?msg={msg}&tipo=error", status_code=303)
 
     if inserted:
         _save_ruta(str(xlsx))
-
-    return _render(
-        "result.html",
-        {
-            "request": request,
-            "success": inserted,
-            "duplicate": not inserted,
-            "error_msg": None,
-            "numero": datos.numero,
-            "xlsx_name": xlsx.name,
-            "xlsx_path": str(xlsx),
-        },
-    )
+        num = quote(datos.numero or "")
+        return RedirectResponse(f"/?msg=Cotización+{num}+insertada+correctamente&tipo=success", status_code=303)
+    else:
+        num = quote(datos.numero or "")
+        return RedirectResponse(f"/?msg=Cotización+{num}+ya+existe&tipo=duplicate", status_code=303)
 
 
 # Excel manager

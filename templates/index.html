@@ -5,7 +5,6 @@
   <div class="step-indicator">
     <span class="step active">1. Subir</span>
     <span class="step">2. Revisar</span>
-    <span class="step">3. Confirmar</span>
   </div>
 
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
@@ -16,6 +15,9 @@
   {% if error %}
     <div class="error">{{ error }}</div>
   {% endif %}
+
+  <!-- Flash message from redirect -->
+  <div id="flash-msg" style="display:none;" class="flash-banner"></div>
 
   <form method="post" action="/extraer" enctype="multipart/form-data">
 
@@ -103,5 +105,33 @@
         }
       });
     });
+
+    // Flash message from ?msg=...&tipo=...
+    (function() {
+      const p = new URLSearchParams(location.search);
+      const msg = p.get('msg');
+      const tipo = p.get('tipo');
+      if (msg) {
+        const el = document.getElementById('flash-msg');
+        el.textContent = decodeURIComponent(msg);
+        el.className = 'flash-banner flash-' + (tipo || 'success');
+        el.style.display = 'block';
+        // Limpiar la URL sin recargar
+        history.replaceState(null, '', '/');
+        // Auto-cerrar después de 5s
+        setTimeout(() => { el.style.display = 'none'; }, 5000);
+      }
+    })();
   </script>
+
+<style>
+  .flash-banner {
+    padding: .75rem 1rem; border-radius: 6px; margin-bottom: 1.2rem;
+    font-size: .9rem; font-weight: 500; animation: flash-in .3s ease;
+  }
+  .flash-success { background: #e8eefb; color: #001781; border: 1px solid #b0c4e8; }
+  .flash-duplicate { background: #fff3e0; color: #b35c00; border: 1px solid #ffcc80; }
+  .flash-error { background: #fdecea; color: #922; border: 1px solid #e6a7a0; }
+  @keyframes flash-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+</style>
 {% endblock %}
