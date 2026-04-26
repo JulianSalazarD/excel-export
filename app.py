@@ -207,6 +207,8 @@ async def extraer(
             "docx_name": docx_file.filename,
             "docx_tmp": str(docx_path),
             "xlsx_path": str(xlsx_path),
+            "medios": [m.value for m in Medio],
+            "estados": [e.value for e in Estado],
         },
     )
 
@@ -216,6 +218,7 @@ async def insertar(
     request: Request,
     docx_tmp: str = Form(...),
     xlsx_path: str = Form(...),
+    medio: str = Form(""),
     numero: str = Form(""),
     nombre: str = Form(""),
     empresa: str = Form(""),
@@ -223,12 +226,17 @@ async def insertar(
     correo: str = Form(""),
     servicio: str = Form(""),
     valor_total: str = Form(""),
+    estado: str = Form(""),
+    trabajo_realizado_en: str = Form(""),
+    orden_servicio: str = Form(""),
     fecha: str = Form(""),
+    observacion: str = Form(""),
 ):
     """Inserta los datos (posiblemente editados) en el .xlsx."""
 
     # Construir DatosCotizacion desde los campos del form
     datos = DatosCotizacion(
+        medio=medio or None,
         numero=numero or None,
         nombre=nombre or None,
         empresa=empresa or None,
@@ -236,7 +244,11 @@ async def insertar(
         correo=correo or None,
         servicio=servicio or None,
         valor_total=valor_total or None,
+        estado=estado or None,
+        trabajo_realizado_en=trabajo_realizado_en or None,
+        orden_servicio=orden_servicio or None,
         fecha=fecha or None,
+        observacion=observacion or None,
     )
 
     # Limpiar archivo temporal del docx

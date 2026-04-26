@@ -49,7 +49,10 @@ def insert_row(ws: Worksheet, datos: DatosCotizacion, data_start: int) -> None:
     ws.cell(row=next_row, column=COL_MAP["telefono"], value=datos.telefono)
     ws.cell(row=next_row, column=COL_MAP["valor_total"], value=_parse_valor(datos.valor_total))
     ws.cell(row=next_row, column=COL_MAP["estado"],   value=datos.estado or DEFAULT_ESTADO)
+    ws.cell(row=next_row, column=COL_MAP["trabajo_realizado_en"], value=datos.trabajo_realizado_en or "")
+    ws.cell(row=next_row, column=COL_MAP["orden_servicio"],       value=datos.orden_servicio or "")
     ws.cell(row=next_row, column=COL_MAP["fecha"],    value=datos.fecha)
+    ws.cell(row=next_row, column=COL_MAP["observacion"], value=datos.observacion or "")
 
 
 def insert_cotizacion(
