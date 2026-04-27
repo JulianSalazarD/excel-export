@@ -9,7 +9,6 @@ conservando estilos y fórmulas en el resto del libro.
 from __future__ import annotations
 
 import shutil
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -48,9 +47,6 @@ COL_MAP: dict[str, int] = {
 
 CAMPOS = list(COL_MAP.keys())
 
-# Directorio de backups junto al ejecutable (o junto al .py en desarrollo)
-_base = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).parent
-BACKUP_DIR = _base / "backups"
 MAX_BACKUPS = 3
 
 
@@ -108,19 +104,20 @@ def _cell_str(value) -> Optional[str]:
 
 def create_backup(xlsx_path: Path) -> Path:
     """
-    Copia el xlsx en automate/backups/<stem>_<timestamp>.xlsx.
-    El directorio de backup es fijo dentro de la app, independiente de
-    dónde esté el archivo fuente (no requiere que exista docs/).
+    Copia el xlsx en <xlsx_dir>/backups/<stem>_<timestamp>.xlsx.
+    Guardarlo junto al archivo fuente garantiza una ruta escribible y fácil
+    de encontrar para el usuario, tanto en dev como dentro de un AppImage.
     Conserva solo los MAX_BACKUPS más recientes por cada archivo.
     """
-    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    backup_dir = xlsx_path.parent / "backups"
+    backup_dir.mkdir(parents=True, exist_ok=True)
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    dest = BACKUP_DIR / f"{xlsx_path.stem}_{ts}{xlsx_path.suffix}"
+    dest = backup_dir / f"{xlsx_path.stem}_{ts}{xlsx_path.suffix}"
     shutil.copy2(xlsx_path, dest)
 
     pattern = f"{xlsx_path.stem}_*{xlsx_path.suffix}"
-    backups = sorted(BACKUP_DIR.glob(pattern))
+    backups = sorted(backup_dir.glob(pattern))
     for old in backups[:-MAX_BACKUPS]:
         old.unlink(missing_ok=True)
 

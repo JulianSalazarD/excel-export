@@ -35,6 +35,10 @@ const fields = {
 let xlsxPath = '';
 let docxPath = '';
 
+function basename(path) {
+  return path.split(/[/\\]/).pop();
+}
+
 // Click handlers para abrir diálogos de archivo
 docxFilename.addEventListener('click', async () => {
   const selected = await open({
@@ -44,7 +48,7 @@ docxFilename.addEventListener('click', async () => {
   
   if (selected) {
     docxPath = selected;
-    docxFilename.textContent = selected.split('/').pop();
+    docxFilename.textContent = basename(selected);
     updateExtractButton();
   }
 });
@@ -57,7 +61,7 @@ xlsxFilename.addEventListener('click', async () => {
   
   if (selected) {
     xlsxPath = selected;
-    xlsxFilename.textContent = selected.split('/').pop();
+    xlsxFilename.textContent = basename(selected);
     updateExtractButton();
   }
 });

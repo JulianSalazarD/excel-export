@@ -20,7 +20,13 @@
   },
   "bundle": {
     "active": true,
+    "category": "Productivity",
     "targets": ["appimage", "deb", "dmg", "nsis"],
+    "externalBin": [
+      "binaries/extract_cotizacion",
+      "binaries/insert_cotizacion",
+      "binaries/sheets_wrapper"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

@@ -13,7 +13,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from extract_cotizacion import _parse_raw_valor
 from models import DatosCotizacion
-from xlsx_manager import COL_MAP, find_data_sheet, find_header_row
+from xlsx_manager import COL_MAP, create_backup, find_data_sheet, find_header_row
 
 XLSX_PATH      = Path("docs/COTIZACIONES 2026. - copia.xlsx")
 DEFAULT_ESTADO = "RECIBIDA"
@@ -77,5 +77,6 @@ def insert_cotizacion(
             return False
 
     insert_row(ws, datos, data_start)
+    create_backup(xlsx_path)
     wb.save(xlsx_path)
     return True
