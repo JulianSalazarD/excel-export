@@ -23,14 +23,16 @@ def _parse_valor(raw: Optional[str]) -> Optional[float]:
     return _parse_raw_valor(raw) if raw else None
 
 
-def _existing_numeros(ws: Worksheet, data_start: int) -> set[str]:
-    col = COL_MAP["numero"] - 1
-    numeros: set[str] = set()
+def _existing_pairs(ws: Worksheet, data_start: int) -> set[tuple[str, str]]:
+    col_numero = COL_MAP["numero"] - 1
+    col_correo = COL_MAP["correo"] - 1
+    pairs: set[tuple[str, str]] = set()
     for row in ws.iter_rows(min_row=data_start, values_only=True):
-        val = row[col]
-        if val:
-            numeros.add(str(val).strip())
-    return numeros
+        numero = row[col_numero]
+        correo = row[col_correo]
+        if numero and correo:
+            pairs.add((str(numero).strip(), str(correo).strip().lower()))
+    return pairs
 
 
 def insert_row(ws: Worksheet, datos: DatosCotizacion, data_start: int) -> None:
@@ -69,8 +71,9 @@ def insert_cotizacion(
     header_row = find_header_row(ws)
     data_start = header_row + 1
 
-    if skip_duplicates and datos.numero:
-        if datos.numero in _existing_numeros(ws, data_start):
+    if skip_duplicates and datos.numero and datos.correo:
+        key = (datos.numero.strip(), datos.correo.strip().lower())
+        if key in _existing_pairs(ws, data_start):
             return False
 
     insert_row(ws, datos, data_start)

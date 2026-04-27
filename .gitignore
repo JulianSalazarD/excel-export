@@ -14,3 +14,6 @@ dist/
 tauri-app
 
 *.spec
+backend/extract_cotizacion
+backend/insert_cotizacion
+backend/sheets_wrapper

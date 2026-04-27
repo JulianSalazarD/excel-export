@@ -10,9 +10,6 @@ import json
 import sys
 from pathlib import Path
 
-# Añadir el directorio padre al path para importar los módulos
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from openpyxl import load_workbook
 
 
