@@ -18,7 +18,6 @@ class Medio(str, Enum):
 
 class Estado(str, Enum):
     RECIBIDA    = "RECIBIDA"
-    EN_PROCESO  = "EN PROCESO"
     ACTUALIZADA = "ACTUALIZADA"
     RECHAZADA   = "RECHAZADA"
     APROBADA    = "APROBADA"
