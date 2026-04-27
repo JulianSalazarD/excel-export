@@ -36,25 +36,42 @@ def _existing_pairs(ws: Worksheet, data_start: int) -> set[tuple[str, str]]:
 
 
 def insert_row(ws: Worksheet, datos: DatosCotizacion, data_start: int) -> None:
-    next_row = data_start
-    for row in ws.iter_rows(min_row=data_start):
-        if all(cell.value is None for cell in row):
-            break
-        next_row += 1
+    """Inserta la fila en la posición que mantiene el orden por número de cotización."""
+    new_numero = str(datos.numero).strip() if datos.numero else None
 
-    ws.cell(row=next_row, column=COL_MAP["medio"],    value=datos.medio or "")
-    ws.cell(row=next_row, column=COL_MAP["numero"],   value=datos.numero)
-    ws.cell(row=next_row, column=COL_MAP["empresa"],  value=datos.empresa)
-    ws.cell(row=next_row, column=COL_MAP["nombre"],   value=datos.nombre)
-    ws.cell(row=next_row, column=COL_MAP["servicio"], value=datos.servicio)
-    ws.cell(row=next_row, column=COL_MAP["correo"],   value=datos.correo)
-    ws.cell(row=next_row, column=COL_MAP["telefono"], value=datos.telefono)
-    ws.cell(row=next_row, column=COL_MAP["valor_total"], value=_parse_valor(datos.valor_total))
-    ws.cell(row=next_row, column=COL_MAP["estado"],   value=datos.estado or DEFAULT_ESTADO)
-    ws.cell(row=next_row, column=COL_MAP["trabajo_realizado_en"], value=datos.trabajo_realizado_en or "")
-    ws.cell(row=next_row, column=COL_MAP["orden_servicio"],       value=datos.orden_servicio or "")
-    ws.cell(row=next_row, column=COL_MAP["fecha"],    value=datos.fecha)
-    ws.cell(row=next_row, column=COL_MAP["observacion"], value=datos.observacion or "")
+    if new_numero:
+        # Buscar posición ordenada ascendentemente por número de cotización
+        target_row = data_start
+        for row in ws.iter_rows(min_row=data_start, values_only=True):
+            existing_numero = row[COL_MAP["numero"] - 1]
+            if existing_numero is None:
+                break  # fin de datos
+            if str(existing_numero).strip() > new_numero:
+                break  # posición de inserción encontrada
+            target_row += 1
+    else:
+        # Sin número → agregar al final (comportamiento anterior)
+        target_row = data_start
+        for row in ws.iter_rows(min_row=data_start):
+            if all(cell.value is None for cell in row):
+                break
+            target_row += 1
+
+    # Insertar fila en la posición encontrada (desplaza filas existentes hacia abajo)
+    ws.insert_rows(target_row)
+
+    ws.cell(row=target_row, column=COL_MAP["medio"],    value=datos.medio or "")
+    ws.cell(row=target_row, column=COL_MAP["numero"],   value=datos.numero)
+    ws.cell(row=target_row, column=COL_MAP["empresa"],  value=datos.empresa)
+    ws.cell(row=target_row, column=COL_MAP["nombre"],   value=datos.nombre)
+    ws.cell(row=target_row, column=COL_MAP["servicio"], value=datos.servicio)
+    ws.cell(row=target_row, column=COL_MAP["correo"],   value=datos.correo)
+    ws.cell(row=target_row, column=COL_MAP["telefono"], value=datos.telefono)
+    ws.cell(row=target_row, column=COL_MAP["valor_total"], value=_parse_valor(datos.valor_total))
+    ws.cell(row=target_row, column=COL_MAP["estado"],   value=datos.estado or DEFAULT_ESTADO)
+    ws.cell(row=target_row, column=COL_MAP["trabajo_realizado_en"], value=datos.trabajo_realizado_en or "")
+    ws.cell(row=target_row, column=COL_MAP["orden_servicio"],       value=datos.orden_servicio or "")
+    ws.cell(row=target_row, column=COL_MAP["observacion"], value=datos.observacion or "")
 
 
 def insert_cotizacion(

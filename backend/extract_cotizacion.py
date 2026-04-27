@@ -179,7 +179,7 @@ class CotizacionExtractor:
         datos.correo      = self._extract_correo(header_paras)
         datos.servicio    = self._extract_servicio(paragraphs)
         datos.valor_total = self._extract_valor_total(tables)
-        datos.fecha       = self._extract_fecha(paragraphs)
+        datos.observacion = self._extract_fecha(paragraphs)
         return datos
 
     # ------------------------------------------------------------------
@@ -240,7 +240,9 @@ class CotizacionExtractor:
         """
         Busca la empresa a partir de la 5ª línea no vacía (índice 4).
         Salta líneas que sean cargo, ciudad, contacto o solo números.
-        Compara con el nombre del archivo como referencia.
+
+        Si la 6ª línea no es email ni teléfono, se considera como posible
+        nombre de la empresa y se valida contra el nombre del archivo.
         """
         empresa_file = self._empresa_from_filename(path) if path else None
 
@@ -248,6 +250,9 @@ class CotizacionExtractor:
             t for t in non_empty
             if not re.match(r"^[\d.\s]+$", t)
         ]
+
+        empresa_candidata: Optional[str] = None
+        idx_candidata: Optional[int] = None
 
         for j in range(4, min(len(filtradas), 10)):
             linea = filtradas[j].strip()
@@ -261,14 +266,29 @@ class CotizacionExtractor:
                 continue
             if RE_CIUDAD.match(linea):
                 continue
-            # Si hay referencia del filename, preferir la que coincida
-            if empresa_file and empresa_file.upper() in linea.upper():
-                return linea
-            # Primera línea que no sea cargo/ciudad/contacto → empresa
-            return linea
+            empresa_candidata = linea
+            idx_candidata = j
+            break
+
+        # Revisar línea 6 (siguiente a la candidata): si no es email/tel,
+        # posiblemente sea el nombre de la empresa.
+        if empresa_candidata and idx_candidata is not None:
+            sig_idx = idx_candidata + 1
+            if sig_idx < len(filtradas):
+                linea_sig = filtradas[sig_idx].strip()
+                if (linea_sig
+                    and not RE_CONTACTO.search(linea_sig)
+                    and not RE_ASUNTO.search(linea_sig)
+                    and not RE_CARGO.match(linea_sig)
+                    and not RE_CIUDAD.match(linea_sig)):
+                    # Línea 6 no es email/tel → posible empresa
+                    if empresa_file and empresa_file.upper() in linea_sig.upper():
+                        # Coincide con el filename → usar línea 6
+                        return linea_sig
+                    # Si no hay filename o no coincide, mantener línea 5
 
         # Fallback: usar el nombre del archivo
-        return empresa_file
+        return empresa_candidata or empresa_file
 
     def _extract_telefono(self, paragraphs: list[str]) -> Optional[str]:
         """Extrae TODOS los teléfonos encontrados (Móvil, Cel, Teléfono)."""

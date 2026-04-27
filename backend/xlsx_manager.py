@@ -41,8 +41,7 @@ COL_MAP: dict[str, int] = {
     "estado":               10,  # J — ESTADO
     "trabajo_realizado_en": 11,  # K — TRABAJO REALIZADO EN
     "orden_servicio":       12,  # L — ORDEN DE SERVICIO MELECTRA
-    "fecha":                13,  # M — N° FACTURA (fecha de cotización)
-    "observacion":          14,  # N — OBSERVACIÓN
+    "observacion":          14,  # N — OBSERVACIÓN (fecha extraída + notas)
 }
 
 CAMPOS = list(COL_MAP.keys())

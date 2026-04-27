@@ -46,7 +46,6 @@ def main() -> None:
             "estado": datos.estado,
             "trabajo_realizado_en": datos.trabajo_realizado_en,
             "orden_servicio": datos.orden_servicio,
-            "fecha": datos.fecha,
             "observacion": datos.observacion,
         }
         

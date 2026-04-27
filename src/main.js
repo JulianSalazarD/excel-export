@@ -28,7 +28,6 @@ const fields = {
   estado: document.getElementById('estado'),
   trabajo_realizado_en: document.getElementById('trabajo_realizado_en'),
   orden_servicio: document.getElementById('orden_servicio'),
-  fecha: document.getElementById('fecha'),
   observacion: document.getElementById('observacion')
 };
 
@@ -112,7 +111,6 @@ extractBtn.addEventListener('click', async () => {
     fields.estado.value = datos.estado || 'RECIBIDA';
     fields.trabajo_realizado_en.value = datos.trabajo_realizado_en || '';
     fields.orden_servicio.value = datos.orden_servicio || '';
-    fields.fecha.value = datos.fecha || '';
     fields.observacion.value = datos.observacion || '';
 
     // Obtener hojas del Excel
@@ -186,7 +184,6 @@ insertBtn.addEventListener('click', async () => {
       estado: fields.estado.value || null,
       trabajo_realizado_en: fields.trabajo_realizado_en.value || null,
       orden_servicio: fields.orden_servicio.value || null,
-      fecha: fields.fecha.value || null,
       observacion: fields.observacion.value || null
     };
 

@@ -19,3 +19,4 @@ backend/insert_cotizacion
 backend/sheets_wrapper
 backend/insert_cotizacion
 build_linux.sh
+ESTADO_ACTUAL.md

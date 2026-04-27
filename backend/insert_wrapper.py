@@ -39,7 +39,6 @@ def main() -> None:
             estado=datos_dict.get("estado"),
             trabajo_realizado_en=datos_dict.get("trabajo_realizado_en"),
             orden_servicio=datos_dict.get("orden_servicio"),
-            fecha=datos_dict.get("fecha"),
             observacion=datos_dict.get("observacion"),
         )
 

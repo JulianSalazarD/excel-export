@@ -34,13 +34,12 @@ class DatosCotizacion:
     correo:               Optional[str] = None
     servicio:             Optional[str] = None
     valor_total:          Optional[str] = None
-    fecha:                Optional[str] = None
     # ── Campos adicionales del Excel ────────────────────────────────────
     medio:                Optional[str] = None   # col B — enum Medio
     estado:               Optional[str] = None   # col J — enum Estado
     trabajo_realizado_en: Optional[str] = None   # col K
     orden_servicio:       Optional[str] = None   # col L
-    observacion:          Optional[str] = None   # col N
+    observacion:          Optional[str] = None   # col N — fecha extraída + notas
 
     def __str__(self) -> str:
         lines = [
@@ -51,7 +50,6 @@ class DatosCotizacion:
             f"Correo             : {self.correo}",
             f"Servicio           : {self.servicio}",
             f"Valor total        : {self.valor_total}",
-            f"Fecha              : {self.fecha}",
             f"Medio              : {self.medio}",
             f"Estado             : {self.estado}",
             f"Trabajo realizado  : {self.trabajo_realizado_en}",
