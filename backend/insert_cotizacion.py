@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Optional
 
 from openpyxl import load_workbook
+from openpyxl.styles import Font
+from openpyxl.worksheet.hyperlink import Hyperlink
 from openpyxl.worksheet.worksheet import Worksheet
 
 from extract_cotizacion import _parse_raw_valor
@@ -66,8 +68,13 @@ def insert_row(ws: Worksheet, datos: DatosCotizacion, data_start: int) -> None:
     ws.cell(row=target_row, column=COL_MAP["nombre"],   value=datos.nombre)
     ws.cell(row=target_row, column=COL_MAP["servicio"], value=datos.servicio)
     ws.cell(row=target_row, column=COL_MAP["correo"],   value=datos.correo)
+    if datos.correo:
+        correo_cell = ws.cell(row=target_row, column=COL_MAP["correo"])
+        correo_cell.font = Font(underline="single", color="0056B3")
+        correo_cell.hyperlink = Hyperlink(target=f"mailto:{datos.correo}", ref=correo_cell.coordinate)
     ws.cell(row=target_row, column=COL_MAP["telefono"], value=datos.telefono)
-    ws.cell(row=target_row, column=COL_MAP["valor_total"], value=_parse_valor(datos.valor_total))
+    valor_cell = ws.cell(row=target_row, column=COL_MAP["valor_total"], value=_parse_valor(datos.valor_total))
+    valor_cell.number_format = '_-"$"\\ * #,##0_-;\\-"$"\\ * #,##0_-;_-"$"\\ * "-"_-;_-@_-'
     ws.cell(row=target_row, column=COL_MAP["estado"],   value=datos.estado or DEFAULT_ESTADO)
     ws.cell(row=target_row, column=COL_MAP["trabajo_realizado_en"], value=datos.trabajo_realizado_en or "")
     ws.cell(row=target_row, column=COL_MAP["orden_servicio"],       value=datos.orden_servicio or "")
