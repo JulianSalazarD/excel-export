@@ -74,6 +74,38 @@ def insert_row(ws: Worksheet, datos: DatosCotizacion, data_start: int) -> None:
     ws.cell(row=target_row, column=COL_MAP["observacion"], value=datos.observacion or "")
 
 
+def _add_dropdown_validations(ws: Worksheet, data_start: int) -> None:
+    """Crea los dropdowns de medio (col B) y estado (col J).
+
+    openpyxl elimina las validaciones por extensión al cargar el archivo
+    (warning: 'Data Validation extension is not supported and will be removed').
+    Esta función las recrea desde la hoja DESPLEGABLES antes de guardar.
+    """
+    from openpyxl.worksheet.datavalidation import DataValidation, DataValidationList
+
+    if ws.data_validations is None:
+        ws.data_validations = DataValidationList()
+    else:
+        ws.data_validations.dataValidation.clear()
+
+    # Encontrar última fila con datos
+    last_row = data_start
+    for row in ws.iter_rows(min_row=data_start):
+        if all(c.value is None for c in row):
+            break
+        last_row = row[0].row
+
+    # Medio (col B) → DESPLEGABLES!$B$2:$B$9
+    dv_medio = DataValidation(type="list", formula1="=DESPLEGABLES!$B$2:$B$9", allow_blank=True)
+    dv_medio.sqref = f"$B${data_start}:$B${last_row}"
+    ws.data_validations.dataValidation.append(dv_medio)
+
+    # Estado (col J) → DESPLEGABLES!$D$2:$D$6
+    dv_estado = DataValidation(type="list", formula1="=DESPLEGABLES!$D$2:$D$6", allow_blank=True)
+    dv_estado.sqref = f"$J${data_start}:$J${last_row}"
+    ws.data_validations.dataValidation.append(dv_estado)
+
+
 def insert_cotizacion(
     datos: DatosCotizacion,
     xlsx_path: Path = XLSX_PATH,
@@ -94,6 +126,7 @@ def insert_cotizacion(
             return False
 
     insert_row(ws, datos, data_start)
+    _add_dropdown_validations(ws, data_start)
     create_backup(xlsx_path)
     wb.save(xlsx_path)
     return True
