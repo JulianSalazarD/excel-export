@@ -12,6 +12,12 @@ from pathlib import Path
 
 from extract_cotizacion import CotizacionExtractor
 
+# En Windows, stdout usa la codepage del sistema (cp1252) cuando se redirige
+# a un pipe. Tauri lee el stdout como UTF-8, por lo que cualquier carácter
+# no-ASCII (tildes, ñ, €) genera bytes inválidos → serde_json falla con
+# "invalid unicode code point". Forzar UTF-8 evita el problema.
+sys.stdout.reconfigure(encoding="utf-8")
+
 
 def main() -> None:
     if len(sys.argv) < 2:

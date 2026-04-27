@@ -13,6 +13,8 @@ from pathlib import Path
 from insert_cotizacion import insert_cotizacion, XLSX_PATH
 from models import DatosCotizacion
 
+sys.stdout.reconfigure(encoding="utf-8")
+
 
 def main() -> None:
     if len(sys.argv) < 2:
