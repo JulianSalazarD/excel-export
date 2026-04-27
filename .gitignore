@@ -17,3 +17,4 @@ tauri-app
 backend/extract_cotizacion
 backend/insert_cotizacion
 backend/sheets_wrapper
+backend/insert_cotizacion
