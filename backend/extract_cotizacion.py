@@ -102,6 +102,13 @@ RE_CIUDAD    = re.compile(
     re.IGNORECASE,
 )
 
+# Patrones de persona jurídica colombiana y "independiente"
+RE_PERSONA_JURIDICA = re.compile(
+    r"\b(S\.?A\.?S?\.?|LTDA\.?|E\.?U\.?|E\.?S\.?P\.?|LIMITADA)\b",
+    re.IGNORECASE,
+)
+RE_INDEPENDIENTE = re.compile(r"independiente", re.IGNORECASE)
+
 
 # ---------------------------------------------------------------------------
 # Helpers de valor
@@ -147,6 +154,27 @@ class CotizacionExtractor:
         path = Path(path)
         doc = Document(str(path))
         paragraphs = [p.text.strip() for p in doc.paragraphs]
+
+        # Encontrar ASUNTO antes de dividir para no partir ese párrafo
+        asunto_idx = None
+        for i, text in enumerate(paragraphs):
+            if RE_ASUNTO.search(text):
+                asunto_idx = i
+                break
+
+        # Pre-procesar: dividir \n solo en párrafos ANTES del ASUNTO
+        # para que índices posicionales (nombre=4º, empresa=5º/6º)
+        # funcionen correctamente sin romper el párrafo ASUNTO
+        processed: list[str] = []
+        for i, text in enumerate(paragraphs):
+            if asunto_idx is not None and i >= asunto_idx:
+                processed.append(text)
+            elif "\n" in text:
+                processed.extend(text.split("\n"))
+            else:
+                processed.append(text)
+        paragraphs = processed
+
         tables = doc.tables
         non_empty = [t for t in paragraphs if t]
 
@@ -154,18 +182,6 @@ class CotizacionExtractor:
         datos.numero      = self._extract_numero(paragraphs, path)
         datos.nombre      = self._extract_nombre(non_empty)
         datos.empresa     = self._extract_empresa(non_empty, path)
-
-        # Si no se encontró empresa por posición, intentar extraerla del
-        # mismo párrafo del nombre (ej: "Francisco Torres \nAMTEX")
-        if not datos.empresa and datos.nombre:
-            filtradas = [
-                t for t in non_empty if not re.match(r"^[\d.\s]+$", t)
-            ]
-            if len(filtradas) >= 4:
-                nombre_line = filtradas[3]
-                partes = nombre_line.split("\n")
-                if len(partes) > 1:
-                    datos.empresa = partes[1].strip() or None
 
         # Solo extraer teléfono/correo de los párrafos antes del ASUNTO
         # (evita capturar datos de Melectra del footer/firma)
@@ -238,57 +254,66 @@ class CotizacionExtractor:
 
     def _extract_empresa(self, non_empty: list[str], path: Optional[Path] = None) -> Optional[str]:
         """
-        Busca la empresa a partir de la 5ª línea no vacía (índice 4).
-        Salta líneas que sean cargo, ciudad, contacto o solo números.
+        Busca la empresa en líneas 5 y 6 (índices 4 y 5 de filtradas):
 
-        Si la 6ª línea no es email ni teléfono, se considera como posible
-        nombre de la empresa y se valida contra el nombre del archivo.
+        1. Persona jurídica (SAS, LTDA, E.U., etc.) → esa línea es la empresa
+        2. "independiente" → "INDEPENDIENTE"
+        3. Coincidencia parcial con filename → esa línea es la empresa
+        4. Nada de lo anterior → "INDEPENDIENTE"
         """
         empresa_file = self._empresa_from_filename(path) if path else None
 
+        # Líneas sin números/puntos sueltos
         filtradas = [
             t for t in non_empty
             if not re.match(r"^[\d.\s]+$", t)
         ]
 
-        empresa_candidata: Optional[str] = None
-        idx_candidata: Optional[int] = None
+        # Palabras significativas del filename para comparación parcial
+        # (3+ caracteres, excluye sufijos de persona jurídica)
+        SKIP_PALABRAS = {"SAS", "S.A.S", "LTDA", "SA", "EU", "ESP"}
+        palabras_filename: list[str] = []
+        if empresa_file:
+            for palabra in empresa_file.upper().split():
+                palabra = palabra.strip(".,- ")
+                if len(palabra) >= 3 and palabra not in SKIP_PALABRAS:
+                    palabras_filename.append(palabra)
 
-        for j in range(4, min(len(filtradas), 10)):
-            linea = filtradas[j].strip()
-            if not linea:
-                continue
-            if RE_CONTACTO.search(linea):
-                break
-            if RE_ASUNTO.search(linea):
-                break
-            if RE_CARGO.match(linea):
-                continue
-            if RE_CIUDAD.match(linea):
-                continue
-            empresa_candidata = linea
-            idx_candidata = j
-            break
+        def es_linea_valida(texto: str) -> bool:
+            return not (
+                RE_CONTACTO.search(texto)
+                or RE_ASUNTO.search(texto)
+                or RE_CARGO.match(texto)
+                or RE_CIUDAD.match(texto)
+            )
 
-        # Revisar línea 6 (siguiente a la candidata): si no es email/tel,
-        # posiblemente sea el nombre de la empresa.
-        if empresa_candidata and idx_candidata is not None:
-            sig_idx = idx_candidata + 1
-            if sig_idx < len(filtradas):
-                linea_sig = filtradas[sig_idx].strip()
-                if (linea_sig
-                    and not RE_CONTACTO.search(linea_sig)
-                    and not RE_ASUNTO.search(linea_sig)
-                    and not RE_CARGO.match(linea_sig)
-                    and not RE_CIUDAD.match(linea_sig)):
-                    # Línea 6 no es email/tel → posible empresa
-                    if empresa_file and empresa_file.upper() in linea_sig.upper():
-                        # Coincide con el filename → usar línea 6
-                        return linea_sig
-                    # Si no hay filename o no coincide, mantener línea 5
+        def coincide_parcialmente(texto: str) -> bool:
+            if not palabras_filename:
+                return False
+            texto_up = texto.upper()
+            return any(p in texto_up for p in palabras_filename)
 
-        # Fallback: usar el nombre del archivo
-        return empresa_candidata or empresa_file
+        for idx in (4, 5):
+            if idx >= len(filtradas):
+                continue
+            linea = filtradas[idx].strip()
+            if not linea or not es_linea_valida(linea):
+                continue
+
+            # 1. Persona jurídica
+            if RE_PERSONA_JURIDICA.search(linea):
+                return linea
+
+            # 2. Independiente
+            if RE_INDEPENDIENTE.search(linea):
+                return "INDEPENDIENTE"
+
+            # 3. Coincidencia parcial con filename
+            if coincide_parcialmente(linea):
+                return linea
+
+        # 4. Nada → independiente
+        return "INDEPENDIENTE"
 
     def _extract_telefono(self, paragraphs: list[str]) -> Optional[str]:
         """Extrae TODOS los teléfonos encontrados (Móvil, Cel, Teléfono)."""
