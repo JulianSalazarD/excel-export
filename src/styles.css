@@ -251,6 +251,20 @@ button:disabled {
   display: none;
 }
 
+/* Utilidades */
+.hidden {
+  display: none;
+}
+
+.new-sheet-row {
+  display: flex;
+  gap: 8px;
+}
+
+.new-sheet-row input {
+  flex: 1;
+}
+
 /* Footer */
 footer {
   margin-top: auto;

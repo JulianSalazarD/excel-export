@@ -25,7 +25,8 @@
     "externalBin": [
       "binaries/extract_cotizacion",
       "binaries/insert_cotizacion",
-      "binaries/sheets_wrapper"
+      "binaries/sheets_wrapper",
+      "binaries/create_sheet"
     ],
     "icon": [
       "icons/32x32.png",

@@ -126,7 +126,15 @@
         <label for="sheet-select">Hoja de Excel:</label>
         <select id="sheet-select">
           <option value="">Seleccionar hoja...</option>
+          <option value="__NEW__">— Crear nueva hoja —</option>
         </select>
+      </div>
+
+      <div id="new-sheet-group" class="form-group hidden">
+        <label for="new-sheet-name">Nombre de la nueva hoja:</label>
+        <div class="new-sheet-row">
+          <input type="text" id="new-sheet-name" placeholder="Ej: MAYO 2026" />
+        </div>
       </div>
 
       <div class="button-group">

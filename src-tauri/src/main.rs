@@ -93,6 +93,23 @@ async fn get_excel_sheets(app: AppHandle, xlsx_path: String) -> Result<Vec<Strin
     Ok(result.sheets)
 }
 
+#[command]
+async fn create_excel_sheet(
+    app: AppHandle,
+    xlsx_path: String,
+    sheet_name: String,
+) -> Result<String, String> {
+    let stdout = run_sidecar(&app, "create_sheet", vec![xlsx_path, sheet_name.clone()]).await?;
+    let result: serde_json::Value = serde_json::from_slice(&stdout)
+        .map_err(|e| format!("Error parseando JSON al crear hoja: {e}"))?;
+
+    if let Some(error) = result["error"].as_str() {
+        return Err(error.to_string());
+    }
+
+    Ok(result["sheet"].as_str().unwrap_or(&sheet_name).to_string())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -100,7 +117,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             extract_cotizacion,
             insert_cotizacion,
-            get_excel_sheets
+            get_excel_sheets,
+            create_excel_sheet
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

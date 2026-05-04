@@ -155,6 +155,96 @@ def load_filas(xlsx_path: Path) -> pl.DataFrame:
 
 
 # ---------------------------------------------------------------------------
+# Creación de hoja desde plantilla
+# ---------------------------------------------------------------------------
+
+HEADER_TEXTS: dict[str, str] = {
+    "medio":                "MEDIO POR EL CUAL SE DIO CUENTA",
+    "numero":               "N° COTIZACIÓN",
+    "empresa":              "NOMBRE EMPRESA",
+    "nombre":               "ENCARGADO- SOLICITANTE",
+    "servicio":             "SERVICIO",
+    "correo":               "CORREO",
+    "telefono":             "TELEFONO",
+    "valor_total":          "VALOR",
+    "estado":               "ESTADO",
+    "trabajo_realizado_en": "TRABAJO REALIZADO  EN",
+    "orden_servicio":       "ORDEN DE SERVICIO MELECTRA",
+    "observacion":          "OBSERVACIÓN",
+}
+
+HEADER_ROW = 5
+
+
+def create_template_sheet(xlsx_path: Path, sheet_name: str) -> str:
+    """Crea una hoja nueva con la plantilla de encabezados y validaciones.
+
+    Returns el nombre de la hoja creada (puede tener sufijo si ya existe).
+    """
+    wb = openpyxl.load_workbook(xlsx_path)
+
+    # Si ya existe una hoja con ese nombre, agregar sufijo
+    original = sheet_name
+    counter = 1
+    while sheet_name in wb.sheetnames:
+        counter += 1
+        sheet_name = f"{original} ({counter})"
+
+    ws = wb.create_sheet(title=sheet_name)
+
+    # --- Encabezados en fila 5 ---
+    from openpyxl.styles import Alignment, Border, Font, Side, PatternFill
+
+    header_font = Font(name="Arial", size=10, bold=True)
+    header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    thin_side = Side(style="thin")
+    header_border = Border(top=thin_side, bottom=thin_side, left=thin_side, right=thin_side)
+
+    for name, col_idx in sorted(COL_MAP.items(), key=lambda x: x[1]):
+        cell = ws.cell(row=HEADER_ROW, column=col_idx, value=HEADER_TEXTS.get(name, ""))
+        cell.font = header_font
+        cell.alignment = header_align
+        cell.border = header_border
+
+    # --- Ancho de columnas ---
+    col_widths = {
+        "A": 1.0, "C": 18.4, "D": 21.7, "E": 25.1, "F": 33.9,
+        "G": 30.0, "H": 12.0, "I": 14.0, "K": 14.4, "L": 11.0, "N": 45.0,
+    }
+    for letter, width in col_widths.items():
+        ws.column_dimensions[letter].width = width
+
+    # --- Alto de fila de encabezados ---
+    ws.row_dimensions[HEADER_ROW].height = 53.25
+
+    # --- Validaciones dropdown (Medio y Estado) ---
+    from openpyxl.worksheet.datavalidation import DataValidation
+
+    dv_medio = DataValidation(
+        type="list",
+        formula1="=DESPLEGABLES!$B$2:$B$9",
+        allow_blank=True,
+    )
+    dv_medio.error = "Seleccione un medio válido de la lista"
+    dv_medio.errorTitle = "Medio inválido"
+    ws.add_data_validation(dv_medio)
+    dv_medio.sqref = f"B{HEADER_ROW + 1}:B{HEADER_ROW + 100}"
+
+    dv_estado = DataValidation(
+        type="list",
+        formula1="=DESPLEGABLES!$D$2:$D$6",
+        allow_blank=True,
+    )
+    dv_estado.error = "Seleccione un estado válido de la lista"
+    dv_estado.errorTitle = "Estado inválido"
+    ws.add_data_validation(dv_estado)
+    dv_estado.sqref = f"J{HEADER_ROW + 1}:J{HEADER_ROW + 100}"
+
+    wb.save(xlsx_path)
+    return sheet_name
+
+
+# ---------------------------------------------------------------------------
 # Guardado
 # ---------------------------------------------------------------------------
 

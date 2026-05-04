@@ -135,29 +135,43 @@ extractBtn.addEventListener('click', async () => {
 async function loadSheets() {
   try {
     const sheets = await invoke('get_excel_sheets', { xlsxPath });
-    
-    // Limpiar y llenar el select
-    sheetSelect.innerHTML = '<option value="">Seleccionar hoja...</option>';
-    
+
+    // Limpiar y llenar el select (mantener las 2 opciones fijas)
+    while (sheetSelect.options.length > 2) {
+      sheetSelect.remove(2);
+    }
+
     sheets.forEach(sheet => {
       const option = document.createElement('option');
       option.value = sheet;
       option.textContent = sheet;
       sheetSelect.appendChild(option);
     });
-    
+
     // Seleccionar la hoja del mes actual si existe
     const currentMonth = new Date().toLocaleString('es-ES', { month: 'long' }).toLowerCase();
     const monthSheet = sheets.find(s => s.toLowerCase().includes(currentMonth));
     if (monthSheet) {
       sheetSelect.value = monthSheet;
+      document.getElementById('new-sheet-group').classList.add('hidden');
     }
-    
+
   } catch (error) {
     console.error('Error al cargar hojas:', error);
     sheetSelect.innerHTML = '<option value="">Error al cargar hojas</option>';
   }
 }
+
+// Mostrar/ocultar campo de nombre de nueva hoja
+sheetSelect.addEventListener('change', () => {
+  const newSheetGroup = document.getElementById('new-sheet-group');
+  if (sheetSelect.value === '__NEW__') {
+    newSheetGroup.classList.remove('hidden');
+    document.getElementById('new-sheet-name').focus();
+  } else {
+    newSheetGroup.classList.add('hidden');
+  }
+});
 
 // Botón de volver
 backBtn.addEventListener('click', () => {
@@ -187,7 +201,28 @@ insertBtn.addEventListener('click', async () => {
       observacion: fields.observacion.value || null
     };
 
-    const sheetName = sheetSelect.value || null;
+    let sheetName = null;
+
+    if (sheetSelect.value === '__NEW__') {
+      // Crear nueva hoja
+      const newName = document.getElementById('new-sheet-name').value.trim();
+      if (!newName) {
+        showFlash('⚠️ Escribe un nombre para la nueva hoja', 'error');
+        insertBtn.disabled = false;
+        insertBtn.textContent = '✓ Insertar en Excel';
+        return;
+      }
+      try {
+        sheetName = await invoke('create_excel_sheet', { xlsxPath, sheetName: newName });
+      } catch (error) {
+        showFlash(`❌ Error al crear hoja: ${error}`, 'error');
+        insertBtn.disabled = false;
+        insertBtn.textContent = '✓ Insertar en Excel';
+        return;
+      }
+    } else {
+      sheetName = sheetSelect.value || null;
+    }
 
     const resultado = await invoke('insert_cotizacion', { datos, xlsxPath, sheetName });
 
