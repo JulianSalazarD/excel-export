@@ -14,6 +14,7 @@ class Medio(str, Enum):
     PAGINA     = "PÁGINA"
     CORREO     = "CORREO"
     INSTAGRAM  = "INSTAGRAM"
+    VISITA     = "VISITA"
 
 
 class Estado(str, Enum):
@@ -39,6 +40,7 @@ class DatosCotizacion:
     estado:               Optional[str] = None   # col J — enum Estado
     trabajo_realizado_en: Optional[str] = None   # col K
     orden_servicio:       Optional[str] = None   # col L
+    numero_factura:       Optional[str] = None   # col M — N° FACTURA
     observacion:          Optional[str] = None   # col N — fecha extraída + notas
 
     def __str__(self) -> str:
@@ -54,6 +56,7 @@ class DatosCotizacion:
             f"Estado             : {self.estado}",
             f"Trabajo realizado  : {self.trabajo_realizado_en}",
             f"Orden de servicio  : {self.orden_servicio}",
+            f"N° Factura         : {self.numero_factura}",
             f"Observación        : {self.observacion}",
         ]
         return "\n".join(lines)

@@ -75,7 +75,12 @@ RE_TEL       = re.compile(
 RE_EMAIL     = re.compile(r"E-?mail\s*:\s*(.+)", re.IGNORECASE)
 RE_ASUNTO    = re.compile(r"ASUNTO\s*:\s*(.+)", re.IGNORECASE)
 RE_FECHA     = re.compile(r"\d{1,2}\s+de\s+\w+\s+del?\s+\d{4}", re.IGNORECASE)
-RE_VALOR_HDR = re.compile(r"VALOR\s+TOTAL(?:\s+DEL\s+MES)?[,]?\s+ANTES\s+(?:DE(?:L)?\s+)?IVA", re.IGNORECASE)
+RE_VALOR_HDR = re.compile(
+    r"VALOR\s+(?:TOTAL|UNITARIO)(?:\s+DEL\s+MES)?[,]?\s+ANTES\s+(?:DE(?:L)?\s+)?IVA",
+    re.IGNORECASE,
+)
+# Si una tabla trae columna unitaria y total a la vez, manda la total
+RE_VALOR_TOT = re.compile(r"VALOR\s+TOTAL", re.IGNORECASE)
 
 # Extrae el número de cotización del nombre del archivo: "COT 040401-26SV-W ..."
 RE_NUM_FILE  = re.compile(r"COT\s+([\w-]+)", re.IGNORECASE)
@@ -377,12 +382,17 @@ class CotizacionExtractor:
             if not table.rows:
                 continue
             header_cells = [c.text.strip() for c in table.rows[0].cells]
-            col_idx = next(
-                (i for i, h in enumerate(header_cells) if RE_VALOR_HDR.search(h)),
-                None,
-            )
-            if col_idx is None:
+            candidatas = [
+                i for i, h in enumerate(header_cells) if RE_VALOR_HDR.search(h)
+            ]
+            if not candidatas:
                 continue
+            # Con ambas columnas presentes, la total tiene prioridad sobre la
+            # unitaria; si sólo hay una, se usa esa.
+            col_idx = next(
+                (i for i in candidatas if RE_VALOR_TOT.search(header_cells[i])),
+                candidatas[0],
+            )
 
             for row in table.rows[1:]:
                 if col_idx >= len(row.cells):

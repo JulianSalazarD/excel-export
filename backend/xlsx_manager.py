@@ -41,6 +41,7 @@ COL_MAP: dict[str, int] = {
     "estado":               10,  # J — ESTADO
     "trabajo_realizado_en": 11,  # K — TRABAJO REALIZADO EN
     "orden_servicio":       12,  # L — ORDEN DE SERVICIO MELECTRA
+    "numero_factura":       13,  # M — N° FACTURA
     "observacion":          14,  # N — OBSERVACIÓN (fecha extraída + notas)
 }
 
@@ -170,6 +171,7 @@ HEADER_TEXTS: dict[str, str] = {
     "estado":               "ESTADO",
     "trabajo_realizado_en": "TRABAJO REALIZADO  EN",
     "orden_servicio":       "ORDEN DE SERVICIO MELECTRA",
+    "numero_factura":       "N° \nFACTURA",
     "observacion":          "OBSERVACIÓN",
 }
 
@@ -192,9 +194,38 @@ def create_template_sheet(xlsx_path: Path, sheet_name: str) -> str:
 
     ws = wb.create_sheet(title=sheet_name)
 
-    # --- Encabezados en fila 5 ---
     from openpyxl.styles import Alignment, Border, Font, Side, PatternFill
 
+    # --- Filas superiores (título e info) ---
+    ws.row_dimensions[1].height = 3.75
+    ws.row_dimensions[2].height = 58.5
+    ws.row_dimensions[3].height = 14.25
+    ws.row_dimensions[4].height = 9.0
+
+    # Título principal (E2:N2 fusionado)
+    ws.merge_cells("E2:N2")
+    title_cell = ws["E2"]
+    title_cell.value = "CONTROL DE COTIZACIONES"
+    title_cell.font = Font(name="Calibri", size=20, bold=True)
+    title_cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    # B2:D2 fusionado (vacío)
+    ws.merge_cells("B2:D2")
+
+    # Fila 3: CÓDIGO, VERSIÓN, VIGENCIA, Página
+    title_font = Font(name="Arial", size=10, bold=True)
+    title_align = Alignment(horizontal="center")
+    for col, text in [(2, "CÓDIGO"), (5, "VERSIÓN"), (9, "VIGENCIA"), (12, "Página")]:
+        cell = ws.cell(row=3, column=col, value=text)
+        cell.font = title_font
+        cell.alignment = title_align
+
+    # Fusiones de fila 3
+    ws.merge_cells("G3:H3")
+    ws.merge_cells("J3:K3")
+    ws.merge_cells("M3:N3")
+
+    # --- Encabezados en fila 5 ---
     header_font = Font(name="Arial", size=10, bold=True)
     header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
     thin_side = Side(style="thin")

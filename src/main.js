@@ -28,6 +28,7 @@ const fields = {
   estado: document.getElementById('estado'),
   trabajo_realizado_en: document.getElementById('trabajo_realizado_en'),
   orden_servicio: document.getElementById('orden_servicio'),
+  numero_factura: document.getElementById('numero_factura'),
   observacion: document.getElementById('observacion')
 };
 
@@ -111,6 +112,7 @@ extractBtn.addEventListener('click', async () => {
     fields.estado.value = datos.estado || 'RECIBIDA';
     fields.trabajo_realizado_en.value = datos.trabajo_realizado_en || '';
     fields.orden_servicio.value = datos.orden_servicio || '';
+    fields.numero_factura.value = datos.numero_factura || '';
     fields.observacion.value = datos.observacion || '';
 
     // Obtener hojas del Excel
@@ -198,6 +200,7 @@ insertBtn.addEventListener('click', async () => {
       estado: fields.estado.value || null,
       trabajo_realizado_en: fields.trabajo_realizado_en.value || null,
       orden_servicio: fields.orden_servicio.value || null,
+      numero_factura: fields.numero_factura.value || null,
       observacion: fields.observacion.value || null
     };
 

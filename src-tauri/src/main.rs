@@ -23,6 +23,7 @@ struct DatosCotizacion {
     estado: Option<String>,
     trabajo_realizado_en: Option<String>,
     orden_servicio: Option<String>,
+    numero_factura: Option<String>,
     observacion: Option<String>,
 }
 

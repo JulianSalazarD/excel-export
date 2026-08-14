@@ -78,6 +78,7 @@ def insert_row(ws: Worksheet, datos: DatosCotizacion, data_start: int) -> None:
     ws.cell(row=target_row, column=COL_MAP["estado"],   value=datos.estado or DEFAULT_ESTADO)
     ws.cell(row=target_row, column=COL_MAP["trabajo_realizado_en"], value=datos.trabajo_realizado_en or "")
     ws.cell(row=target_row, column=COL_MAP["orden_servicio"],       value=datos.orden_servicio or "")
+    ws.cell(row=target_row, column=COL_MAP["numero_factura"],       value=datos.numero_factura or "")
     ws.cell(row=target_row, column=COL_MAP["observacion"], value=datos.observacion or "")
 
 
